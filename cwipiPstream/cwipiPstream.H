@@ -173,19 +173,14 @@ namespace Foam
         // Update source fields to latest time step
         inline void updateSources()
         {
-            // Compute Lamb vector
-            LPrime_ = sourceFields_.L() - LMean();
-
-            // Compute entropy gradient
-            TPrime_ = thermo_.T() - TMean();
-            sPrime_ = sourceFields_.s() - sMean();
-            ThetaPrime_ = (TPrime() * fvc::grad(sMean())) - (sPrime() * fvc::grad(TMean()));
-
             // Compute continuity equation source
-            F_p_ = entropyDerivativeSwitch * ((rhoMean() / thermo_.Cp()) * (fvc::ddt(sPrime()) + (UMean() & fvc::grad(sPrime())))) * sourceDamping();
+            // F_p = (rhoMean / c_p) * (DMean/Dt(sPrime))
+            // ddt(s - sMean) = ddt(s) since ddt(sMean) = 0
+            F_p_ = entropyDerivativeSwitch * ((rhoMean() / thermo_.Cp()) * (fvc::ddt(sourceFields_.s()) + (UMean() & fvc::grad((sourceFields_.s() - sMean()))))) * sourceDamping();
 
             // Compute momentum equation source
-            F_u_ = (entropyGradientSwitch * ThetaPrime()) - (lambVectorSwitch * LPrime()) * sourceDamping();
+            // F_u = (TPrime * grad(sMean)) - (sPrime * grad(TMean)) - LPrime;
+            F_u_ = ((entropyGradientSwitch * ((thermo_.T() - TMean()) * fvc::grad(sMean())) - ((sourceFields_.s() - sMean()) * fvc::grad(TMean()))) - (lambVectorSwitch * (sourceFields_.L() - LMean()))) * sourceDamping();
 
             // Pointwise interpolation of sources
             F_0_p_ = pInterp_.interpolate(F_p());
@@ -235,10 +230,6 @@ namespace Foam
         const volScalarField cMean_;
         const volScalarField TMean_;
         const volScalarField sourceDamping_;
-        volVectorField LPrime_;
-        volVectorField ThetaPrime_;
-        volScalarField sPrime_;
-        volScalarField TPrime_;
         volScalarField F_p_;
         volVectorField F_u_;
 
@@ -309,26 +300,6 @@ namespace Foam
         inline const volScalarField &sourceDamping() const
         {
             return sourceDamping_;
-        }
-
-        inline const volVectorField &LPrime() const
-        {
-            return LPrime_;
-        }
-
-        inline const volVectorField &ThetaPrime() const
-        {
-            return ThetaPrime_;
-        }
-
-        inline const volScalarField &sPrime() const
-        {
-            return sPrime_;
-        }
-
-        inline const volScalarField &TPrime() const
-        {
-            return TPrime_;
         }
 
         inline const pointScalarField &F_0_p() const
