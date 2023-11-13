@@ -145,7 +145,7 @@ namespace Foam
             "FOAM_APE",
             "receiveTag");
 
-        // Define mesh and locate interpolation
+        // Define mesh
         cwipi_define_mesh(
             "cwipiFoam",
             mesh_.nPoints(),
@@ -153,8 +153,14 @@ namespace Foam
             pointCoords.data(),
             connecIdx.data(),
             connec.data());
+
+        // Locate interpolation
+        Info << "About to call cwipi_locate." << endl;
+        Info << "This is a common point of failure due to a high oversampling rate defined in Nektar++." << endl;
+        Info << "If the application crashes at this point, check the Oversample property of your coupling entry." << endl;
         cwipi_locate(
             "cwipiFoam");
+        Info << "Interpolation located successfully" << endl;
     }
 
     // Destructor
