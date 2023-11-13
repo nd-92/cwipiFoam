@@ -40,7 +40,7 @@ namespace Foam
     {
     public:
         // Default constructor
-        cwipiSwitch(
+        inline cwipiSwitch(
             const Foam::Time &runTime)
             : isActive_(readBool(runTime.controlDict().lookup("cwipiSwitch")))
         {
@@ -55,7 +55,7 @@ namespace Foam
         };
 
         // Default destructor
-        ~cwipiSwitch(){};
+        inline ~cwipiSwitch(){};
 
         // Return access to switch
         inline Foam::Switch isActive()
@@ -72,7 +72,7 @@ namespace Foam
     {
     public:
         // Default constructor
-        cwipiFields(
+        inline cwipiFields(
             const fvMesh &mesh,
             const Foam::Time &runTime,
             const volVectorField &U,
@@ -87,7 +87,7 @@ namespace Foam
         };
 
         // Default destructor
-        ~cwipiFields(){};
+        inline ~cwipiFields(){};
 
         // Update Lamb vector, entropy and speed of sound
         inline void update()
