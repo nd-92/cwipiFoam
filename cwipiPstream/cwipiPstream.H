@@ -58,7 +58,7 @@ namespace Foam
         inline ~cwipiSwitch(){};
 
         // Return access to switch
-        inline Foam::Switch isActive()
+        inline const Foam::Switch &isActive() const
         {
             return isActive_;
         }
