@@ -207,11 +207,8 @@ namespace Foam
                 status);
         }
 
-        // Use modulo operator (think this is correct?)
-        cwipiTimeStep = cwipiTimeStep % cwipiStep;
-
-        // Advance time step
-        cwipiTimeStep = cwipiTimeStep + 1;
+        // Use modulo operator and increment by 1, faster
+        cwipiTimeStep = (cwipiTimeStep % cwipiStep) + 1;
     }
 
 }
