@@ -103,9 +103,6 @@ namespace Foam
         forAll(mesh_.cells(), i)
         {
             connecIdx[i + 1] = connecIdx[i] + 8;
-        }
-        forAll(mesh_.cells(), i)
-        {
             forAll(mesh_.cellShapes()[i], j)
             {
                 connec[8 * i + j] = mesh_.cellShapes()[i][j] + 1;
