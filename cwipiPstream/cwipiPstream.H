@@ -163,18 +163,6 @@ namespace Foam
         // Advance time step
         void updateTime();
 
-        // Access to continuity sources
-        inline const volScalarField &F_p() const
-        {
-            return F_p_;
-        }
-
-        // Access to momentum sources
-        inline const volVectorField &F_u() const
-        {
-            return F_u_;
-        }
-
         // Evaluate send condition
         inline const Foam::Switch sendNow() const
         {
@@ -351,6 +339,16 @@ namespace Foam
         inline const pointVectorField &F_0_u() const
         {
             return F_0_u_;
+        }
+
+        inline const volScalarField &F_p() const
+        {
+            return F_p_;
+        }
+
+        inline const volVectorField &F_u() const
+        {
+            return F_u_;
         }
     };
 
