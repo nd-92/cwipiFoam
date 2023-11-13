@@ -45,33 +45,29 @@ namespace Foam
         const psiThermo &thermo,
         const cwipiFields &sourceFields,
         const volPointInterpolation &pInterp)
-        : sendTag(0),                                                                                               // Set send tag to 0
-          status(0),                                                                                                // Set status to 0
-          cwipiDim(readInt(runTime.controlDict().lookup("cwipiDim"))),                                              // Get dimension
-          lambVectorSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiLambVector")))),   // Cast lamb vector coefficient to scalar
-          entropyGradientSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiEntropy")))), // Cast entropy gradient coefficient to scalar
-          entropyDerivativeSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiDsDt")))),  // Cast entropy material derivative coefficient to scalar
-          cwipiStep(readInt(runTime.controlDict().lookup("cwipiStep"))),                                            // Get time step
-          cwipiTimeStep(readInt(runTime.controlDict().lookup("cwipiStep"))),                                        // Assign time step
-          UMean_(IOobject("UMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),
-          rhoMean_(IOobject("rhoMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),
-          LMean_(IOobject("LMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),
-          sMean_(IOobject("sMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),
-          cMean_(IOobject("cMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),
-          TMean_(IOobject("TMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),
-          sourceDamping_(IOobject("sourceDamping", runTime.timeName(), mesh, IOobject::READ_IF_PRESENT, IOobject::AUTO_WRITE), mesh, dimensionedScalar("one", dimless, 1)),
-          LPrime_(IOobject("LPrime", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::NO_WRITE), mesh, dimensionSet(0, 1, -2, 0, 0, 0, 0)),
-          ThetaPrime_(IOobject("ThetaPrime", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::NO_WRITE), mesh, dimensionSet(0, 1, -2, 0, 0, 0, 0)),
-          sPrime_(IOobject("sPrime", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::NO_WRITE), mesh, dimensionSet(0, 2, -2, -1, 0, 0, 0)),
-          TPrime_(IOobject("TPrime", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::NO_WRITE), mesh, dimensionSet(0, 0, 0, 1, 0, 0, 0)),
-          F_p_(IOobject("F_p_", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(1, -3, -1, 0, 0, 0, 0)),
-          F_u_(IOobject("F_u_", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(0, 1, -2, 0, 0, 0, 0)),
-          mesh_(mesh),
-          thermo_(thermo),
-          sourceFields_(sourceFields),
-          pInterp_(pInterp),
-          F_0_p_(pInterp_.interpolate(F_p_)),
-          F_0_u_(pInterp_.interpolate(F_u_))
+        : sendTag(0),                                                                                                                                                       // Set send tag to 0
+          status(0),                                                                                                                                                        // Set status to 0
+          cwipiDim(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim")))),                                                                                // Get dimension
+          lambVectorSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiLambVector")))),                                                           // Cast lamb vector coefficient to scalar
+          entropyGradientSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiEntropy")))),                                                         // Cast entropy gradient coefficient to scalar
+          entropyDerivativeSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiDsDt")))),                                                          // Cast entropy material derivative coefficient to scalar
+          cwipiStep(readInt(runTime.controlDict().lookup("cwipiStep"))),                                                                                                    // Get time step
+          cwipiTimeStep(readInt(runTime.controlDict().lookup("cwipiStep"))),                                                                                                // Assign time step
+          UMean_(IOobject("UMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),                                                             // Time-averaged velocity
+          rhoMean_(IOobject("rhoMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),                                                         // Time-averaged density
+          LMean_(IOobject("LMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),                                                             // Time-averaged Lamb vector
+          sMean_(IOobject("sMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),                                                             // Time-averaged entropy
+          cMean_(IOobject("cMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),                                                             // Time-averaged speed of sound
+          TMean_(IOobject("TMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),                                                             // Time-averaged temperature
+          sourceDamping_(IOobject("sourceDamping", runTime.timeName(), mesh, IOobject::READ_IF_PRESENT, IOobject::AUTO_WRITE), mesh, dimensionedScalar("one", dimless, 1)), // Source damping coefficient
+          F_p_(IOobject("F_p_", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(1, -3, -1, 0, 0, 0, 0)),                             // Continuity equation sources
+          F_u_(IOobject("F_u_", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(0, 1, -2, 0, 0, 0, 0)),                              // Momentum equation sources
+          mesh_(mesh),                                                                                                                                                      // Mesh
+          thermo_(thermo),                                                                                                                                                  // Thermo model
+          sourceFields_(sourceFields),                                                                                                                                      // Instantaneous flow fields
+          pInterp_(pInterp),                                                                                                                                                // Pointwise mesh interpolation
+          F_0_p_(pInterp_.interpolate(F_p_)),                                                                                                                               // Pointwise interpolation of continuity equation sources
+          F_0_u_(pInterp_.interpolate(F_u_))                                                                                                                                // Pointwise interpolation of momentum equation sources
     {
         // Catch incorrect parameter at start, no need to throw in updateSources()
         // Also assign sending field names
