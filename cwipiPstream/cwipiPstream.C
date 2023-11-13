@@ -47,7 +47,8 @@ namespace Foam
         const volPointInterpolation &pInterp)
         : sendTag(0),                                                                                                                                                       // Set send tag to 0
           status(0),                                                                                                                                                        // Set status to 0
-          cwipiDim(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim")))),                                                                                // Get dimension
+          dim_(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim")))),                                                                                    // Get dimension
+          isThreeDimensional_(static_cast<bool>(readInt(runTime.controlDict().lookup("cwipiDim")) - 2)),                                                                    // Get switch for 3d
           lambVectorSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiLambVector")))),                                                           // Cast lamb vector coefficient to scalar
           entropyGradientSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiEntropy")))),                                                         // Cast entropy gradient coefficient to scalar
           entropyDerivativeSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiDsDt")))),                                                          // Cast entropy material derivative coefficient to scalar
@@ -69,16 +70,17 @@ namespace Foam
           F_0_p_(pInterp_.interpolate(F_p_)),                                                                                                                               // Pointwise interpolation of continuity equation sources
           F_0_u_(pInterp_.interpolate(F_u_))                                                                                                                                // Pointwise interpolation of momentum equation sources
     {
+
         // Catch incorrect parameter at start, no need to throw in updateSources()
         // Also assign sending field names
-        switch (cwipiDim)
+        switch (dim())
         {
         case 2:
-            sourceFieldNames = "F_0_p,F_0_u,F_0_v";
+            sourceFieldNames_ = "F_0_p,F_0_u,F_0_v";
             Info << "Coupling enabled with 2 physical dimensions" << endl;
             break;
         case 3:
-            sourceFieldNames = "F_0_p,F_0_u,F_0_v,F_0_w";
+            sourceFieldNames_ = "F_0_p,F_0_u,F_0_v,F_0_w";
             Info << "Coupling enabled with 3 physical dimensions" << endl;
             break;
         default:
@@ -90,7 +92,7 @@ namespace Foam
         pointCoords.resize(3 * mesh_.nPoints());
         connecIdx.resize(mesh_.nCells() + 1);
         connec.resize(mesh_.nCells() * 8);
-        fieldsToSend.resize((cwipiDim + 1) * mesh_.nPoints());
+        fieldsToSend.resize((dim() + 1) * mesh_.nPoints());
 
         // Create mesh connectivity list
         forAll(mesh_.points(), i)
@@ -112,10 +114,10 @@ namespace Foam
         // Add local control parameters
         cwipi_add_local_int_control_parameter(
             "nSendVars",
-            cwipiDim + 1);
+            dim() + 1);
         cwipi_add_local_string_control_parameter(
             "sendFieldNames",
-            sourceFieldNames);
+            sourceFieldNames());
         cwipi_add_local_int_control_parameter(
             "receiveTag",
             sendTag);
@@ -171,10 +173,10 @@ namespace Foam
             "cwipiFoam",
             "ex1",
             sendTag,
-            cwipiDim + 1,
+            dim() + 1,
             1,
             0,
-            sourceFieldNames,
+            sourceFieldNames(),
             fieldsToSend.data(),
             &status);
 
@@ -197,7 +199,7 @@ namespace Foam
     void cwipiPstream::updateTime()
     {
         // Compare time step to step
-        if (cwipiTimeStep == cwipiStep)
+        if (sendNow())
         {
             // Wait
             cwipi_wait_issend(

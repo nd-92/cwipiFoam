@@ -187,23 +187,23 @@ namespace Foam
             F_0_u_ = pInterp_.interpolate(F_u());
 
             // Assign fieldsToSend for either 2D or 3D case
-            if (dim() == 2)
+            if (isThreeDimensional())
             {
                 forAll(mesh_.points(), i)
                 {
-                    fieldsToSend[((dim() + 1) * i) + 0] = F_0_p()[i];
-                    fieldsToSend[((dim() + 1) * i) + 1] = F_0_u()[i].x();
-                    fieldsToSend[((dim() + 1) * i) + 2] = F_0_u()[i].y();
+                    fieldsToSend[(4 * i) + 0] = F_0_p()[i];
+                    fieldsToSend[(4 * i) + 1] = F_0_u()[i].x();
+                    fieldsToSend[(4 * i) + 2] = F_0_u()[i].y();
+                    fieldsToSend[(4 * i) + 3] = F_0_u()[i].z();
                 }
             }
             else
             {
                 forAll(mesh_.points(), i)
                 {
-                    fieldsToSend[((dim() + 1) * i) + 0] = F_0_p()[i];
-                    fieldsToSend[((dim() + 1) * i) + 1] = F_0_u()[i].x();
-                    fieldsToSend[((dim() + 1) * i) + 2] = F_0_u()[i].y();
-                    fieldsToSend[((dim() + 1) * i) + 3] = F_0_u()[i].z();
+                    fieldsToSend[(3 * i) + 0] = F_0_p()[i];
+                    fieldsToSend[(3 * i) + 1] = F_0_u()[i].x();
+                    fieldsToSend[(3 * i) + 2] = F_0_u()[i].y();
                 }
             }
         }
@@ -213,7 +213,8 @@ namespace Foam
         int status;
 
         // Spatial dimension
-        const uint8_t cwipiDim;
+        const uint8_t dim_;
+        const bool isThreeDimensional_;
 
         // Parameters for coupling
         const scalar lambVectorSwitch;
@@ -250,7 +251,7 @@ namespace Foam
         pointVectorField F_0_u_;
 
         // List of argument names
-        const char *sourceFieldNames;
+        const char *sourceFieldNames_;
 
         // Mesh info for cwipi
         std::vector<scalar> pointCoords = std::vector<scalar>();
@@ -260,10 +261,18 @@ namespace Foam
         // Cwipi source array
         std::vector<scalar> fieldsToSend = std::vector<scalar>();
 
-        // Physical dimension
+        // Physical dimension, switch for 3d and field names
         inline uint8_t dim() const
         {
-            return cwipiDim;
+            return dim_;
+        }
+        inline bool isThreeDimensional() const
+        {
+            return isThreeDimensional_;
+        }
+        inline const char *sourceFieldNames() const
+        {
+            return sourceFieldNames_;
         }
 
         // Access to vol fields
@@ -271,52 +280,42 @@ namespace Foam
         {
             return UMean_;
         }
-
         inline const volScalarField &rhoMean() const
         {
             return rhoMean_;
         }
-
         inline const volVectorField &LMean() const
         {
             return LMean_;
         }
-
         inline const volScalarField &sMean() const
         {
             return sMean_;
         }
-
         inline const volScalarField &cMean() const
         {
             return cMean_;
         }
-
         inline const volScalarField &TMean() const
         {
             return TMean_;
         }
-
         inline const volScalarField &sourceDamping() const
         {
             return sourceDamping_;
         }
-
         inline const pointScalarField &F_0_p() const
         {
             return F_0_p_;
         }
-
         inline const pointVectorField &F_0_u() const
         {
             return F_0_u_;
         }
-
         inline const volScalarField &F_p() const
         {
             return F_p_;
         }
-
         inline const volVectorField &F_u() const
         {
             return F_u_;
