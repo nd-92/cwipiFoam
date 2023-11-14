@@ -161,12 +161,10 @@ namespace Foam
         cwipi_locate(
             "cwipiFoam");
         Info << "Interpolation located successfully." << endl;
-    }
+    };
 
     // Destructor
-    cwipiPstream::~cwipiPstream()
-    {
-    }
+    cwipiPstream::~cwipiPstream(){};
 
     // Send fields
     void cwipiPstream::send()
@@ -190,16 +188,18 @@ namespace Foam
         switch (status)
         {
         case CWIPI_EXCHANGE_OK:
-            Info << "Exchange Ok" << endl;
+            // Info << "Exchange Ok" << endl;
             break;
         case CWIPI_EXCHANGE_BAD_RECEIVING:
-            Info << "Bad receiving" << endl;
+            throw std::runtime_error("Error: Bad receive status.");
+            // Info << "Bad receiving" << endl;
             break;
         default:
-            Info << "Error: bad exchange status" << endl;
+            throw std::runtime_error("Error: Undefined receive status.");
+            // Info << "Error: bad exchange status" << endl;
             break;
         }
-    }
+    };
 
     // Advance time step
     void cwipiPstream::updateTime()
@@ -215,7 +215,7 @@ namespace Foam
 
         // Use modulo operator and increment by 1, faster
         cwipiTimeStep = (cwipiTimeStep % cwipiStep) + 1;
-    }
+    };
 
 }
 

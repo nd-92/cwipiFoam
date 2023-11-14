@@ -61,7 +61,7 @@ namespace Foam
         inline const Foam::Switch &isActive() const
         {
             return isActive_;
-        }
+        };
 
     private:
         // Switch
@@ -127,25 +127,25 @@ namespace Foam
 
             // Update speed of sound
             c_ = Foam::sqrt(thermo_.gamma() * thermo_.p() / thermo_.rho());
-        }
+        };
 
         // Access to Lamb vector by reference
         inline volVectorField const &L() const
         {
             return L_;
-        }
+        };
 
         // Access to entropy by reference
         inline volScalarField const &s() const
         {
             return s_;
-        }
+        };
 
         // Access to speed of sound by reference
         inline volScalarField const &c() const
         {
             return c_;
-        }
+        };
 
     private:
         // Lamb vector
@@ -167,7 +167,7 @@ namespace Foam
         inline const volVectorField U() const
         {
             return U_;
-        }
+        };
     };
 
     class cwipiPstream
@@ -194,7 +194,7 @@ namespace Foam
         inline const Foam::Switch sendNow() const
         {
             return (cwipiTimeStep == cwipiStep);
-        }
+        };
 
     private:
         // Update source fields to latest time step
@@ -233,7 +233,7 @@ namespace Foam
                     fieldsToSend[(3 * i) + 2] = F_0_u()[i].y();
                 }
             }
-        }
+        };
 
         // Send tag and status
         int sendTag;
@@ -292,61 +292,61 @@ namespace Foam
         inline uint8_t dim() const
         {
             return dim_;
-        }
+        };
         inline bool isThreeDimensional() const
         {
             return isThreeDimensional_;
-        }
+        };
         inline const char *sourceFieldNames() const
         {
             return sourceFieldNames_;
-        }
+        };
 
         // Access to vol fields
         inline const volVectorField &UMean() const
         {
             return UMean_;
-        }
+        };
         inline const volScalarField &rhoMean() const
         {
             return rhoMean_;
-        }
+        };
         inline const volVectorField &LMean() const
         {
             return LMean_;
-        }
+        };
         inline const volScalarField &sMean() const
         {
             return sMean_;
-        }
+        };
         inline const volScalarField &cMean() const
         {
             return cMean_;
-        }
+        };
         inline const volScalarField &TMean() const
         {
             return TMean_;
-        }
+        };
         inline const volScalarField &sourceDamping() const
         {
             return sourceDamping_;
-        }
+        };
         inline const pointScalarField &F_0_p() const
         {
             return F_0_p_;
-        }
+        };
         inline const pointVectorField &F_0_u() const
         {
             return F_0_u_;
-        }
+        };
         inline const volScalarField &F_p() const
         {
             return F_p_;
-        }
+        };
         inline const volVectorField &F_u() const
         {
             return F_u_;
-        }
+        };
     };
 
 }
