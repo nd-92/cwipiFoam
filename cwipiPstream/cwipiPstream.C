@@ -160,7 +160,7 @@ namespace Foam
         Info << "If the application crashes at this point, check the Oversample property of your coupling entry." << endl;
         cwipi_locate(
             "cwipiFoam");
-        Info << "Interpolation located successfully" << endl;
+        Info << "Interpolation located successfully." << endl;
     }
 
     // Destructor

@@ -46,11 +46,11 @@ namespace Foam
         {
             if (isActive() == true)
             {
-                Info << "CWIPI coupling enabled" << endl;
+                Info << "CWIPI coupling enabled." << endl;
             }
             else
             {
-                Info << "CWIPI coupling disabled" << endl;
+                Info << "CWIPI coupling disabled." << endl;
             }
         };
 
@@ -77,13 +77,37 @@ namespace Foam
             const Foam::Time &runTime,
             const volVectorField &U,
             const psiThermo &thermo)
-            : L_(IOobject("L", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(0, 1, -2, 0, 0, 0, 0)),
-              s_(IOobject("s", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(0, 2, -2, -1, 0, 0, 0)),
-              c_(IOobject("c", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(0, 1, -1, 0, 0, 0, 0)),
+            : L_(
+                  IOobject(
+                      "L",
+                      runTime.timeName(),
+                      mesh,
+                      IOobject::NO_READ,
+                      IOobject::AUTO_WRITE),
+                  mesh,
+                  dimensionSet(0, 1, -2, 0, 0, 0, 0)),
+              s_(
+                  IOobject(
+                      "s",
+                      runTime.timeName(),
+                      mesh,
+                      IOobject::NO_READ,
+                      IOobject::AUTO_WRITE),
+                  mesh,
+                  dimensionSet(0, 2, -2, -1, 0, 0, 0)),
+              c_(
+                  IOobject(
+                      "c",
+                      runTime.timeName(),
+                      mesh,
+                      IOobject::NO_READ,
+                      IOobject::AUTO_WRITE),
+                  mesh,
+                  dimensionSet(0, 1, -1, 0, 0, 0, 0)),
               U_(U),
               thermo_(thermo)
         {
-            Info << "Cwipi source fields allocated" << endl;
+            Info << "CWIPI source fields allocated." << endl;
         };
 
         // Default destructor
@@ -96,7 +120,10 @@ namespace Foam
             L_ = fvc::curl(U()) ^ U();
 
             // Update entropy
-            s_ = (thermo_.Cp() * log(thermo_.T() / Foam::constant::standard::Tstd)) - ((Foam::constant::physicoChemical::R / thermo_.W()) * log(thermo_.p() / Foam::constant::standard::Pstd));
+            s_ = (thermo_.Cp() *                                       //
+                  log(thermo_.T() / Foam::constant::standard::Tstd)) - //
+                 ((Foam::constant::physicoChemical::R / thermo_.W()) * //
+                  log(thermo_.p() / Foam::constant::standard::Pstd));  //
 
             // Update speed of sound
             c_ = Foam::sqrt(thermo_.gamma() * thermo_.p() / thermo_.rho());
