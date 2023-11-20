@@ -1,0 +1,26 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: cwipiFoam
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Nathan
+    family-names: Duggins
+    email: nd203@leicester.ac.uk
+    affiliation: PhD student
+repository-code: 'https://github.com/nd-92/cwipiFoam'
+keywords:
+  - openfoam
+  - aeroacoustics
+  - nektar
+  - computational aeroacoustics
+  - c++
+  - cpp
+  - coupling
+  - api
+  - object oriented programming
+license: GPL-3.0+
