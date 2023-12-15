@@ -67,8 +67,8 @@ namespace Foam
           thermo_(thermo),                                                                                                                                                  // Thermo model
           sourceFields_(sourceFields),                                                                                                                                      // Instantaneous flow fields
           pInterp_(pInterp),                                                                                                                                                // Pointwise mesh interpolation
-          F_0_p_(pInterp_.interpolate(F_p_)),                                                                                                                               // Pointwise interpolation of continuity equation sources
-          F_0_u_(pInterp_.interpolate(F_u_))                                                                                                                                // Pointwise interpolation of momentum equation sources
+          F_0_p_(pInterp_.interpolate(F_p_ * 0)),                                                                                                                           // Pointwise interpolation of continuity equation sources
+          F_0_u_(pInterp_.interpolate(F_u_ * 0))                                                                                                                            // Pointwise interpolation of momentum equation sources
     {
 
         // Catch incorrect parameter at start, no need to throw in updateSources()
@@ -100,6 +100,14 @@ namespace Foam
             pointCoords[3 * i + 0] = mesh_.points()[i].x();
             pointCoords[3 * i + 1] = mesh_.points()[i].y();
             pointCoords[3 * i + 2] = mesh_.points()[i].z();
+            F_0_p_[i] = 0;
+            F_0_u_[i].x() = 0;
+            F_0_u_[i].y() = 0;
+            F_0_u_[i].z() = 0;
+            fieldsToSend[3 * i + 0] = 0;
+            fieldsToSend[3 * i + 1] = 0;
+            fieldsToSend[3 * i + 2] = 0;
+            fieldsToSend[3 * i + 3] = 0;
         }
         connecIdx[0] = 0;
         forAll(mesh_.cells(), i)
