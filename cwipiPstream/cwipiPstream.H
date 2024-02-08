@@ -30,146 +30,14 @@ License
 #include "volPointInterpolation.H"
 #include "volFields.H"
 #include "psiThermo.H"
+#include "cwipiSwitch.H"
+#include "cwipiFields.H"
+#include "fixedValueFvPatchFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-
-    class cwipiSwitch
-    {
-    public:
-        // Default constructor
-        inline cwipiSwitch(
-            const Foam::Time &runTime)
-            : isActive_(readBool(runTime.controlDict().lookup("cwipiSwitch")))
-        {
-            if (isActive() == true)
-            {
-                Info << "CWIPI coupling enabled." << endl;
-            }
-            else
-            {
-                Info << "CWIPI coupling disabled." << endl;
-            }
-        };
-
-        // Default destructor
-        inline ~cwipiSwitch(){};
-
-        // Return access to switch
-        inline const Foam::Switch &isActive() const
-        {
-            return isActive_;
-        };
-
-    private:
-        // Switch
-        const Foam::Switch isActive_;
-    };
-
-    class cwipiFields
-    {
-    public:
-        // Default constructor
-        inline cwipiFields(
-            const fvMesh &mesh,
-            const Foam::Time &runTime,
-            const volVectorField &U,
-            const psiThermo &thermo)
-            : L_(
-                  IOobject(
-                      "L",
-                      runTime.timeName(),
-                      mesh,
-                      IOobject::NO_READ,
-                      IOobject::AUTO_WRITE),
-                  mesh,
-                  dimensionSet(0, 1, -2, 0, 0, 0, 0)),
-              s_(
-                  IOobject(
-                      "s",
-                      runTime.timeName(),
-                      mesh,
-                      IOobject::NO_READ,
-                      IOobject::AUTO_WRITE),
-                  mesh,
-                  dimensionSet(0, 2, -2, -1, 0, 0, 0)),
-              c_(
-                  IOobject(
-                      "c",
-                      runTime.timeName(),
-                      mesh,
-                      IOobject::NO_READ,
-                      IOobject::AUTO_WRITE),
-                  mesh,
-                  dimensionSet(0, 1, -1, 0, 0, 0, 0)),
-              U_(U),
-              thermo_(thermo)
-        {
-            Info << "CWIPI source fields allocated." << endl;
-        };
-
-        // Default destructor
-        inline ~cwipiFields(){};
-
-        // Update Lamb vector, entropy and speed of sound
-        inline void update()
-        {
-            // Update Lamb vector
-            L_ = fvc::curl(U()) ^ U();
-
-            // Update entropy
-            s_ = (thermo_.Cp() *                                       //
-                  log(thermo_.T() / Foam::constant::standard::Tstd)) - //
-                 ((Foam::constant::physicoChemical::R / thermo_.W()) * //
-                  log(thermo_.p() / Foam::constant::standard::Pstd));  //
-
-            // Update speed of sound
-            c_ = Foam::sqrt(thermo_.gamma() * thermo_.p() / thermo_.rho());
-        };
-
-        // Access to Lamb vector by reference
-        inline volVectorField const &L() const
-        {
-            return L_;
-        };
-
-        // Access to entropy by reference
-        inline volScalarField const &s() const
-        {
-            return s_;
-        };
-
-        // Access to speed of sound by reference
-        inline volScalarField const &c() const
-        {
-            return c_;
-        };
-
-    private:
-        // Lamb vector
-        volVectorField L_;
-
-        // Entropy
-        volScalarField s_;
-
-        // Speed of sound
-        volScalarField c_;
-
-        // Const reference to velocity
-        const volVectorField &U_;
-
-        // Const reference to thermo
-        const psiThermo &thermo_;
-
-        // Velocity
-        inline const volVectorField U() const
-        {
-            return U_;
-        };
-    };
-
     class cwipiPstream
     {
     public:
@@ -191,46 +59,81 @@ namespace Foam
         void updateTime();
 
         // Evaluate send condition
-        inline const Foam::Switch sendNow() const
+        inline constexpr const Foam::Switch sendNow() const
         {
             return (cwipiTimeStep == cwipiStep);
         };
 
     private:
+        // Smoothen source fields
+        inline void smoothenSources()
+        {
+            // Create scalar smooth field from virgin scalar smooth field template
+            volScalarField &pressureSmoother = pressureSmoother_;
+            // pressureSmoother.dimensions().reset(F_p_.dimensions());
+            pressureSmoother == F_p_;
+            pressureSmoother.correctBoundaryConditions();
+            // pressureSmoother.oldTime().dimensions().reset(F_p_.dimensions());
+            pressureSmoother.oldTime() = F_p_;
+            pressureSmoother.oldTime().correctBoundaryConditions();
+
+            // Create vector smooth field from virgin vector smooth field template
+            volVectorField &velocitySmoother = velocitySmoother_;
+            // velocitySmoother.dimensions().reset(F_u_.dimensions());
+            velocitySmoother == F_u_;
+            velocitySmoother.correctBoundaryConditions();
+            // velocitySmoother.oldTime().dimensions().reset(F_u_.dimensions());
+            velocitySmoother.oldTime() = F_u_;
+            velocitySmoother.oldTime().correctBoundaryConditions();
+
+            // Laplacian smoothing
+            solve(fvm::ddt(pressureSmoother) - fvm::laplacian(DT_, pressureSmoother));
+            solve(fvm::ddt(velocitySmoother) - fvm::laplacian(DT_, velocitySmoother));
+
+            // Assign smoothened values
+            F_p_ = pressureSmoother;
+            F_p_.correctBoundaryConditions();
+
+            F_u_ = velocitySmoother;
+            F_u_.correctBoundaryConditions();
+        }
+
         // Update source fields to latest time step
         inline void updateSources()
         {
             // Compute continuity equation source
             // F_p = (rhoMean / c_p) * (DMean/Dt(sPrime))
             // ddt(s - sMean) = ddt(s) since ddt(sMean) = 0
-            F_p_ = entropyDerivativeSwitch * ((rhoMean() / thermo_.Cp()) * (fvc::ddt(sourceFields_.s()) + (UMean() & fvc::grad((sourceFields_.s() - sMean()))))) * sourceDamping();
+            F_p_ = entropyDerivativeSwitch * ((rhoMean_ / thermo_.Cp()) * (fvc::ddt(sourceFields_.s()) + (UMean_ & fvc::grad((sourceFields_.s() - sMean_))))) * sourceDamping_;
 
             // Compute momentum equation source
             // F_u = (TPrime * grad(sMean)) - (sPrime * grad(TMean)) - LPrime;
-            F_u_ = ((entropyGradientSwitch * ((thermo_.T() - TMean()) * fvc::grad(sMean())) - ((sourceFields_.s() - sMean()) * fvc::grad(TMean()))) - (lambVectorSwitch * (sourceFields_.L() - LMean()))) * sourceDamping();
+            F_u_ = ((entropyGradientSwitch * ((thermo_.T() - TMean_) * fvc::grad(sMean_)) - ((sourceFields_.s() - sMean_) * fvc::grad(TMean_))) - (lambVectorSwitch * (sourceFields_.L() - LMean_))) * sourceDamping_;
+
+            // smoothenSources();
 
             // Pointwise interpolation of sources
-            F_0_p_ = pInterp_.interpolate(F_p());
-            F_0_u_ = pInterp_.interpolate(F_u());
+            F_0_p_ = pInterp_.interpolate(F_p_);
+            F_0_u_ = pInterp_.interpolate(F_u_);
 
             // Assign fieldsToSend for either 2D or 3D case
-            if (isThreeDimensional())
+            if (isThreeDimensional_)
             {
                 forAll(mesh_.points(), i)
                 {
-                    fieldsToSend[(4 * i) + 0] = F_0_p()[i];
-                    fieldsToSend[(4 * i) + 1] = F_0_u()[i].x();
-                    fieldsToSend[(4 * i) + 2] = F_0_u()[i].y();
-                    fieldsToSend[(4 * i) + 3] = F_0_u()[i].z();
+                    fieldsToSend[(4 * i) + 0] = F_0_u_[i].x();
+                    fieldsToSend[(4 * i) + 1] = F_0_u_[i].y();
+                    fieldsToSend[(4 * i) + 2] = F_0_u_[i].z();
+                    fieldsToSend[(4 * i) + 3] = F_0_p_[i];
                 }
             }
             else
             {
                 forAll(mesh_.points(), i)
                 {
-                    fieldsToSend[(3 * i) + 0] = F_0_p()[i];
-                    fieldsToSend[(3 * i) + 1] = F_0_u()[i].x();
-                    fieldsToSend[(3 * i) + 2] = F_0_u()[i].y();
+                    fieldsToSend[(3 * i) + 0] = F_0_u_[i].x();
+                    fieldsToSend[(3 * i) + 1] = F_0_u_[i].y();
+                    fieldsToSend[(3 * i) + 2] = F_0_p_[i];
                 }
             }
         };
@@ -261,6 +164,9 @@ namespace Foam
         volScalarField F_p_;
         volVectorField F_u_;
 
+        // Run time
+        const Time &runTime_;
+
         // Mesh
         const fvMesh &mesh_;
 
@@ -277,6 +183,14 @@ namespace Foam
         pointScalarField F_0_p_;
         pointVectorField F_0_u_;
 
+        // Laplacian smoothing length
+        const dimensionedScalar smoothingLength_;
+        const dimensionedScalar DT_;
+
+        // Laplacian smoothing fields
+        volScalarField pressureSmoother_;
+        volVectorField velocitySmoother_;
+
         // List of argument names
         const char *sourceFieldNames_;
 
@@ -287,66 +201,6 @@ namespace Foam
 
         // Cwipi source array
         std::vector<scalar> fieldsToSend = std::vector<scalar>();
-
-        // Physical dimension, switch for 3d and field names
-        inline uint8_t dim() const
-        {
-            return dim_;
-        };
-        inline bool isThreeDimensional() const
-        {
-            return isThreeDimensional_;
-        };
-        inline const char *sourceFieldNames() const
-        {
-            return sourceFieldNames_;
-        };
-
-        // Access to vol fields
-        inline const volVectorField &UMean() const
-        {
-            return UMean_;
-        };
-        inline const volScalarField &rhoMean() const
-        {
-            return rhoMean_;
-        };
-        inline const volVectorField &LMean() const
-        {
-            return LMean_;
-        };
-        inline const volScalarField &sMean() const
-        {
-            return sMean_;
-        };
-        inline const volScalarField &cMean() const
-        {
-            return cMean_;
-        };
-        inline const volScalarField &TMean() const
-        {
-            return TMean_;
-        };
-        inline const volScalarField &sourceDamping() const
-        {
-            return sourceDamping_;
-        };
-        inline const pointScalarField &F_0_p() const
-        {
-            return F_0_p_;
-        };
-        inline const pointVectorField &F_0_u() const
-        {
-            return F_0_u_;
-        };
-        inline const volScalarField &F_p() const
-        {
-            return F_p_;
-        };
-        inline const volVectorField &F_u() const
-        {
-            return F_u_;
-        };
     };
 
 }
