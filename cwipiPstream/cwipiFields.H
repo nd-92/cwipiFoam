@@ -40,33 +40,33 @@ namespace Foam
             const Foam::Time &runTime,
             const volVectorField &U,
             const psiThermo &thermo)
-            : L_(                                                          //
-                  IOobject(                                                //
-                      "L",                                                 //
-                      runTime.timeName(),                                  //
-                      mesh,                                                //
-                      IOobject::NO_READ,                                   //
-                      IOobject::AUTO_WRITE),                               //
-                  fvc::curl(U) ^ U),                                       //
-              s_(                                                          //
-                  IOobject(                                                //
-                      "s",                                                 //
-                      runTime.timeName(),                                  //
-                      mesh,                                                //
-                      IOobject::NO_READ,                                   //
-                      IOobject::AUTO_WRITE),                               //
-                  (thermo.Cp() *                                           //
-                   log(thermo.T() / Foam::constant::standard::Tstd)) -     //
-                      ((Foam::constant::physicoChemical::R / thermo.W()) * //
-                       log(thermo.p() / Foam::constant::standard::Pstd))), //
-              c_(                                                          //
-                  IOobject(                                                //
-                      "c",                                                 //
-                      runTime.timeName(),                                  //
-                      mesh,                                                //
-                      IOobject::NO_READ,                                   //
-                      IOobject::AUTO_WRITE),                               //
-                  thermo.gamma() * thermo.p() / thermo.rho()),             //
+            : L_(                                       //
+                  IOobject(                             //
+                      "L",                              //
+                      runTime.timeName(),               //
+                      mesh,                             //
+                      IOobject::NO_READ,                //
+                      IOobject::AUTO_WRITE),            //
+                  mesh,                                 //
+                  dimensionSet(0, 1, -2, 0, 0, 0, 0)),  //
+              s_(                                       //
+                  IOobject(                             //
+                      "s",                              //
+                      runTime.timeName(),               //
+                      mesh,                             //
+                      IOobject::NO_READ,                //
+                      IOobject::AUTO_WRITE),            //
+                  mesh,                                 //
+                  dimensionSet(0, 2, -2, -1, 0, 0, 0)), //
+              c_(                                       //
+                  IOobject(                             //
+                      "c",                              //
+                      runTime.timeName(),               //
+                      mesh,                             //
+                      IOobject::NO_READ,                //
+                      IOobject::AUTO_WRITE),            //
+                  mesh,                                 //
+                  dimensionSet(0, 1, -1, 0, 0, 0, 0)),  //
               U_(U),
               thermo_(thermo)
         {
