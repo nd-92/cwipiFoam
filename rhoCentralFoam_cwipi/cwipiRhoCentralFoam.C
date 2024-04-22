@@ -66,6 +66,17 @@ int main(int argc, char *argv[])
 #include "createFieldRefs.H"
 #include "createTimeControls.H"
 
+    // Read CWIPI switch
+    cwipiSwitch cwipi(
+        runTime);
+
+    // Create CWIPI fields
+    cwipiFields couplingFields(
+        mesh,
+        runTime,
+        U,
+        thermo);
+
     turbulence->validate();
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -82,31 +93,15 @@ int main(int argc, char *argv[])
     Info << "Starting time loop" << endl;
     Info << endl;
 
-    // Read CWIPI switch
-    cwipiSwitch cwipi(
-        runTime);
-
-    // Create CWIPI fields
-    cwipiFields couplingFields(
-        mesh,
-        runTime,
-        U,
-        thermo);
-
     // Is solver running in coupled mode?
     if (cwipi.isActive())
     {
-        // Pointwise interpolation
-        volPointInterpolation pInterp(
-            mesh);
-
         // Create CWIPI coupling
         cwipiPstream coupling(
             runTime,
             mesh,
             thermo,
-            couplingFields,
-            pInterp);
+            couplingFields);
 
         while (runTime.run())
         {

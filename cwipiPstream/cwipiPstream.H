@@ -32,6 +32,7 @@ License
 #include "psiThermo.H"
 #include "cwipiSwitch.H"
 #include "cwipiFields.H"
+#include "cwipiMeanFields.H"
 #include "fixedValueFvPatchFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -46,8 +47,7 @@ namespace Foam
             const Foam::Time &runTime,
             const fvMesh &mesh,
             const psiThermo &thermo,
-            const cwipiFields &sourceFields,
-            const volPointInterpolation &pInterp);
+            const cwipiFields &sourceFields);
 
         // Default destructor
         ~cwipiPstream();
@@ -65,38 +65,56 @@ namespace Foam
         };
 
     private:
-        // Smoothen source fields
-        inline void smoothenSources()
+        // Return the names of the source fields
+        inline const char *cwipiSourceFieldNames(const uint8_t dim)
         {
-            // Create scalar smooth field from virgin scalar smooth field template
-            volScalarField &pressureSmoother = pressureSmoother_;
-            // pressureSmoother.dimensions().reset(F_p_.dimensions());
-            pressureSmoother == F_p_;
-            pressureSmoother.correctBoundaryConditions();
-            // pressureSmoother.oldTime().dimensions().reset(F_p_.dimensions());
-            pressureSmoother.oldTime() = F_p_;
-            pressureSmoother.oldTime().correctBoundaryConditions();
+            switch (dim)
+            {
+            case 2:
+                Info << "Coupling enabled with 2 physical dimensions" << endl;
+                return "F_0_u,F_0_v,F_0_p";
+                break;
+            case 3:
+                Info << "Coupling enabled with 3 physical dimensions" << endl;
+                return "F_0_u,F_0_v,F_0_w,F_0_p";
+                break;
+            default:
+                throw std::invalid_argument("Variable cwipiDim should be 2 or 3.");
+                break;
+            }
+        };
+        // Smoothen source fields
+        // inline void smoothenSources()
+        // {
+        //     // Create scalar smooth field from virgin scalar smooth field template
+        //     volScalarField &pressureSmoother = pressureSmoother_;
+        //     // pressureSmoother.dimensions().reset(F_p_.dimensions());
+        //     pressureSmoother == F_p_;
+        //     pressureSmoother.correctBoundaryConditions();
+        //     // pressureSmoother.oldTime().dimensions().reset(F_p_.dimensions());
+        //     pressureSmoother.oldTime() = F_p_;
+        //     pressureSmoother.oldTime().correctBoundaryConditions();
 
-            // Create vector smooth field from virgin vector smooth field template
-            volVectorField &velocitySmoother = velocitySmoother_;
-            // velocitySmoother.dimensions().reset(F_u_.dimensions());
-            velocitySmoother == F_u_;
-            velocitySmoother.correctBoundaryConditions();
-            // velocitySmoother.oldTime().dimensions().reset(F_u_.dimensions());
-            velocitySmoother.oldTime() = F_u_;
-            velocitySmoother.oldTime().correctBoundaryConditions();
+        //     // Create vector smooth field from virgin vector smooth field template
+        //     volVectorField &velocitySmoother = velocitySmoother_;
+        //     // velocitySmoother.dimensions().reset(F_u_.dimensions());
+        //     velocitySmoother == F_u_;
+        //     velocitySmoother.correctBoundaryConditions();
+        //     // velocitySmoother.oldTime().dimensions().reset(F_u_.dimensions());
+        //     velocitySmoother.oldTime() = F_u_;
+        //     velocitySmoother.oldTime().correctBoundaryConditions();
 
-            // Laplacian smoothing
-            solve(fvm::ddt(pressureSmoother) - fvm::laplacian(DT_, pressureSmoother));
-            solve(fvm::ddt(velocitySmoother) - fvm::laplacian(DT_, velocitySmoother));
+        //     // Laplacian smoothing
+        //     solve(fvm::ddt(pressureSmoother) - fvm::laplacian(DT_, pressureSmoother));
+        //     solve(fvm::ddt(velocitySmoother) - fvm::laplacian(DT_, velocitySmoother));
 
-            // Assign smoothened values
-            F_p_ = pressureSmoother;
-            F_p_.correctBoundaryConditions();
+        //     // Assign smoothened values
+        //     F_p_ = pressureSmoother;
+        //     F_p_.correctBoundaryConditions();
 
-            F_u_ = velocitySmoother;
-            F_u_.correctBoundaryConditions();
-        }
+        //     F_u_ = velocitySmoother;
+        //     F_u_.correctBoundaryConditions();
+        // }
 
         // Update source fields to latest time step
         inline void updateSources()
@@ -104,11 +122,11 @@ namespace Foam
             // Compute continuity equation source
             // F_p = (rhoMean / c_p) * (DMean/Dt(sPrime))
             // ddt(s - sMean) = ddt(s) since ddt(sMean) = 0
-            F_p_ = entropyDerivativeSwitch * ((rhoMean_ / thermo_.Cp()) * (fvc::ddt(sourceFields_.s()) + (UMean_ & fvc::grad((sourceFields_.s() - sMean_))))) * sourceDamping_;
+            F_p_ = entropyDerivativeSwitch * ((baseFlow_.rhoMean() / thermo_.Cp()) * (fvc::ddt(sourceFields_.s()) + (baseFlow_.UMean() & fvc::grad((sourceFields_.s() - baseFlow_.sMean()))))) * sourceDamping_;
 
             // Compute momentum equation source
             // F_u = (TPrime * grad(sMean)) - (sPrime * grad(TMean)) - LPrime;
-            F_u_ = ((entropyGradientSwitch * ((thermo_.T() - TMean_) * fvc::grad(sMean_)) - ((sourceFields_.s() - sMean_) * fvc::grad(TMean_))) - (lambVectorSwitch * (sourceFields_.L() - LMean_))) * sourceDamping_;
+            F_u_ = ((entropyGradientSwitch * ((thermo_.T() - baseFlow_.TMean()) * fvc::grad(baseFlow_.sMean())) - ((sourceFields_.s() - baseFlow_.sMean()) * fvc::grad(baseFlow_.TMean()))) - (lambVectorSwitch * (sourceFields_.L() - baseFlow_.LMean()))) * sourceDamping_;
 
             // smoothenSources();
 
@@ -138,6 +156,9 @@ namespace Foam
             }
         };
 
+// Pointwise interpolation
+        const volPointInterpolation pInterp_;
+
         // Send tag and status
         int sendTag;
         int status;
@@ -153,13 +174,10 @@ namespace Foam
         const label cwipiStep;
         label cwipiTimeStep;
 
-        // Requisite fields
-        const volVectorField UMean_;
-        const volScalarField rhoMean_;
-        const volVectorField LMean_;
-        const volScalarField sMean_;
-        const volScalarField cMean_;
-        const volScalarField TMean_;
+        // Mean flow fields
+        const cwipiMeanFields baseFlow_;
+
+        // Acoustic sources and damping
         const volScalarField sourceDamping_;
         volScalarField F_p_;
         volVectorField F_u_;
@@ -176,20 +194,17 @@ namespace Foam
         // Cwipi fields object
         const cwipiFields &sourceFields_;
 
-        // Pointwise interpolation
-        const volPointInterpolation &pInterp_;
-
         // Point fields
         pointScalarField F_0_p_;
         pointVectorField F_0_u_;
 
         // Laplacian smoothing length
-        const dimensionedScalar smoothingLength_;
-        const dimensionedScalar DT_;
+        // const dimensionedScalar smoothingLength_;
+        // const dimensionedScalar DT_;
 
         // Laplacian smoothing fields
-        volScalarField pressureSmoother_;
-        volVectorField velocitySmoother_;
+        // volScalarField pressureSmoother_;
+        // volVectorField velocitySmoother_;
 
         // List of argument names
         const char *sourceFieldNames_;

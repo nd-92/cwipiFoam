@@ -37,62 +37,36 @@ License
 
 namespace Foam
 {
-
-    // Helper function for initialising the source field names
-    inline const char *cwipiSourceFieldNames(const uint8_t dim)
-    {
-        switch (dim)
-        {
-        case 2:
-            Info << "Coupling enabled with 2 physical dimensions" << endl;
-            return "F_0_u,F_0_v,F_0_p";
-            break;
-        case 3:
-            Info << "Coupling enabled with 3 physical dimensions" << endl;
-            return "F_0_u,F_0_v,F_0_w,F_0_p";
-            break;
-        default:
-            throw std::invalid_argument("Variable cwipiDim should be 2 or 3.");
-            break;
-        }
-    };
-
     // Constructor
     cwipiPstream::cwipiPstream(
         const Foam::Time &runTime,
         const fvMesh &mesh,
         const psiThermo &thermo,
-        const cwipiFields &sourceFields,
-        const volPointInterpolation &pInterp)
-        : sendTag(0),                                                                                                                                                                                                                       // Set send tag to 0
-          status(0),                                                                                                                                                                                                                        // Set status to 0
-          dim_(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim")))),                                                                                                                                                    // Get dimension
-          isThreeDimensional_(static_cast<bool>(readInt(runTime.controlDict().lookup("cwipiDim")) - 2)),                                                                                                                                    // Get switch for 3d
-          lambVectorSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiLambVector")))),                                                                                                                           // Cast lamb vector coefficient to scalar
-          entropyGradientSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiEntropy")))),                                                                                                                         // Cast entropy gradient coefficient to scalar
-          entropyDerivativeSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiDsDt")))),                                                                                                                          // Cast entropy material derivative coefficient to scalar
-          cwipiStep(readInt(runTime.controlDict().lookup("cwipiStep"))),                                                                                                                                                                    // Get time step
-          cwipiTimeStep(readInt(runTime.controlDict().lookup("cwipiStep"))),                                                                                                                                                                // Assign time step
-          UMean_(IOobject("UMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),                                                                                                                             // Time-averaged velocity
-          rhoMean_(IOobject("rhoMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),                                                                                                                         // Time-averaged density
-          LMean_(IOobject("LMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),                                                                                                                             // Time-averaged Lamb vector
-          sMean_(IOobject("sMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),                                                                                                                             // Time-averaged entropy
-          cMean_(IOobject("cMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),                                                                                                                             // Time-averaged speed of sound
-          TMean_(IOobject("TMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),                                                                                                                             // Time-averaged temperature
-          sourceDamping_(IOobject("sourceDamping", runTime.timeName(), mesh, IOobject::READ_IF_PRESENT, IOobject::AUTO_WRITE), mesh, dimensionedScalar("one", dimless, 1)),                                                                 // Source damping coefficient
-          F_p_(IOobject("F_p", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(1, -3, -1, 0, 0, 0, 0)),                                                                                              // Continuity equation sources
-          F_u_(IOobject("F_u", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(0, 1, -2, 0, 0, 0, 0)),                                                                                               // Momentum equation sources
-          runTime_(runTime),                                                                                                                                                                                                                //
-          mesh_(mesh),                                                                                                                                                                                                                      // Mesh
-          thermo_(thermo),                                                                                                                                                                                                                  // Thermo model
-          sourceFields_(sourceFields),                                                                                                                                                                                                      // Instantaneous flow fields
-          pInterp_(pInterp),                                                                                                                                                                                                                // Pointwise mesh interpolation
-          F_0_p_(pInterp_.interpolate(F_p_ * 0)),                                                                                                                                                                                           // Pointwise interpolation of continuity equation sources
-          F_0_u_(pInterp_.interpolate(F_u_ * 0)),                                                                                                                                                                                           // Pointwise interpolation of momentum equation sources
-          smoothingLength_("smoothingLength", dimensionSet(0, 1, 0, 0, 0, 0, 0), readScalar(runTime.controlDict().lookup("smoothingLength"))),                                                                                              // Laplacian smoothing length
-          DT_("DT", dimensionSet(0, 2, -1, 0, 0), smoothingLength_.value() * smoothingLength_.value() / mesh_.time().deltaTValue()),                                                                                                        //
-          pressureSmoother_(IOobject("pressureSmoother", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedScalar("zero", F_p_.dimensions(), 0), fixedValueFvPatchScalarField::typeName),               // Field for smoothing pressure sources
-          velocitySmoother_(IOobject("velocitySmoother", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedVector("zero", F_u_.dimensions(), vector(0, 0, 0)), fixedValueFvPatchScalarField::typeName), // Field for smoothing velocity sources
+        const cwipiFields &sourceFields)
+        : pInterp_(mesh),
+          sendTag(0),                                                                                                                                                       // Set send tag to 0
+          status(0),                                                                                                                                                        // Set status to 0
+          dim_(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim")))),                                                                                    // Get dimension
+          isThreeDimensional_(static_cast<bool>(readInt(runTime.controlDict().lookup("cwipiDim")) - 2)),                                                                    // Get switch for 3d
+          lambVectorSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiLambVector")))),                                                           // Cast lamb vector coefficient to scalar
+          entropyGradientSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiEntropy")))),                                                         // Cast entropy gradient coefficient to scalar
+          entropyDerivativeSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiDsDt")))),                                                          // Cast entropy material derivative coefficient to scalar
+          cwipiStep(readInt(runTime.controlDict().lookup("cwipiStep"))),                                                                                                    // Get time step
+          cwipiTimeStep(readInt(runTime.controlDict().lookup("cwipiStep"))),                                                                                                // Assign time step
+          baseFlow_(cwipiMeanFields(mesh, runTime)),                                                                                                                        // Mean flow fields
+          sourceDamping_(IOobject("sourceDamping", runTime.timeName(), mesh, IOobject::READ_IF_PRESENT, IOobject::AUTO_WRITE), mesh, dimensionedScalar("one", dimless, 1)), // Source damping coefficient
+          F_p_(IOobject("F_p", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(1, -3, -1, 0, 0, 0, 0)),                              // Continuity equation sources
+          F_u_(IOobject("F_u", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(0, 1, -2, 0, 0, 0, 0)),                               // Momentum equation sources
+          runTime_(runTime),                                                                                                                                                //
+          mesh_(mesh),                                                                                                                                                      // Mesh
+          thermo_(thermo),                                                                                                                                                  // Thermo model
+          sourceFields_(sourceFields),                                                                                                                                      // Instantaneous flow fields
+          F_0_p_(pInterp_.interpolate(F_p_ * 0)),                                                                                                                           // Pointwise interpolation of continuity equation sources
+          F_0_u_(pInterp_.interpolate(F_u_ * 0)),                                                                                                                           // Pointwise interpolation of momentum equation sources
+                                                                                                                                                                            //   smoothingLength_("smoothingLength", dimensionSet(0, 1, 0, 0, 0, 0, 0), readScalar(runTime.controlDict().lookup("smoothingLength"))),                                                                                              // Laplacian smoothing length
+                                                                                                                                                                            //   DT_("DT", dimensionSet(0, 2, -1, 0, 0), smoothingLength_.value() * smoothingLength_.value() / mesh_.time().deltaTValue()),                                                                                                        //
+                                                                                                                                                                            //   pressureSmoother_(IOobject("pressureSmoother", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedScalar("zero", F_p_.dimensions(), 0), fixedValueFvPatchScalarField::typeName),               // Field for smoothing pressure sources
+                                                                                                                                                                            //   velocitySmoother_(IOobject("velocitySmoother", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedVector("zero", F_u_.dimensions(), vector(0, 0, 0)), fixedValueFvPatchScalarField::typeName), // Field for smoothing velocity sources
           sourceFieldNames_(cwipiSourceFieldNames(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim")))))
     {
         // Resize mesh vectors to fit
