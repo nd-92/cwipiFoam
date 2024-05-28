@@ -1,4 +1,7 @@
 EXE_INC = \
+    -IBCs/rho \
+    -IBCs/T \
+    -IBCs/U \
     -IBCs/lnInclude \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
@@ -7,7 +10,8 @@ EXE_INC = \
     -I$(LIB_SRC)/thermophysicalModels/specie/lnInclude \
     -I$(LIB_SRC)/TurbulenceModels/turbulenceModels/lnInclude \
     -I$(LIB_SRC)/TurbulenceModels/compressible/lnInclude \
-    -I../cwipiPstream/lnInclude
+    -I../cwipiPstream/lnInclude \
+    -fwhole-program
 
 EXE_LIBS = \
     -lfiniteVolume \
