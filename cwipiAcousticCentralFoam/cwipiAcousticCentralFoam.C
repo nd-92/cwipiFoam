@@ -25,7 +25,7 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
-    rhoCentralFoam
+    cwipiAcousticCentralFoam
 
 Group
     grpCompressibleSolvers
@@ -39,7 +39,7 @@ Description
 
 #include "cwipiPstream.H"
 #include "fvCFD.H"
-#include "dynamicFvMesh.H"
+// #include "dynamicFvMesh.H"
 #include "psiThermo.H"
 #include "turbulentFluidThermoModel.H"
 #include "fixedRhoFvPatchScalarField.H"
@@ -61,14 +61,15 @@ int main(int argc, char *argv[])
 #include "addCheckCaseOptions.H"
 #include "setRootCaseLists.H"
 #include "createTime.H"
-#include "createDynamicFvMesh.H"
+#include "createMesh.H"
+// #include "createDynamicFvMesh.H"
 #include "createFields.H"
 #include "createFieldRefs.H"
 #include "createTimeControls.H"
 
     // Read CWIPI switch
-    cwipiSwitch cwipi(
-        runTime);
+    // cwipiSwitch cwipi(
+    //     runTime);
 
     // Create CWIPI fields
     cwipiFields couplingFields(
@@ -94,56 +95,56 @@ int main(int argc, char *argv[])
     Info << endl;
 
     // Is solver running in coupled mode?
-    if (cwipi.isActive())
+    // if (cwipi.isActive())
+    //{
+    // Create CWIPI coupling
+    cwipiPstream coupling(
+        runTime,
+        mesh,
+        thermo,
+        couplingFields);
+
+    while (runTime.run())
     {
-        // Create CWIPI coupling
-        cwipiPstream coupling(
-            runTime,
-            mesh,
-            thermo,
-            couplingFields);
+        // Update CWIPI fields
+        couplingFields.update();
 
-        while (runTime.run())
+        // Send sources at correct time step
+        if (coupling.sendNow())
         {
-            // Update CWIPI fields
-            couplingFields.update();
-
-            // Send sources at correct time step
-            if (coupling.sendNow())
-            {
-                coupling.send();
-            }
-
-            // Execute main body of solver
-#include "rhoCentralFoam.H"
-
-            // Do I/O
-            runTime.write();
-
-            // Update time step of coupling
-            coupling.updateTime();
-
-            // Print execution time
-            runTime.printExecutionTime(Info);
+            coupling.send();
         }
+
+        // Execute main body of solver
+#include "cwipiAcousticCentralFoam.H"
+
+        // Do I/O
+        runTime.write();
+
+        // Update time step of coupling
+        coupling.updateTime();
+
+        // Print execution time
+        runTime.printExecutionTime(Info);
     }
-    else
-    {
-        while (runTime.run())
-        {
-            // Update CWIPI fields
-            couplingFields.update();
+    //}
+    //     else
+    //     {
+    //         while (runTime.run())
+    //         {
+    //             // Update CWIPI fields
+    //             couplingFields.update();
 
-            // Execute main body of solver
-#include "rhoCentralFoam.H"
+    //             // Execute main body of solver
+    // #include "cwipiAcousticCentralFoam.H"
 
-            // Do I/O
-            runTime.write();
+    //             // Do I/O
+    //             runTime.write();
 
-            // Print execution time
-            runTime.printExecutionTime(Info);
-        }
-    }
+    //             // Print execution time
+    //             runTime.printExecutionTime(Info);
+    //         }
+    //     }
 
     Info << "End" << endl;
 

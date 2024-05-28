@@ -90,6 +90,7 @@ namespace Foam
 
             // Update speed of sound
             c_ = Foam::sqrt(thermo_.gamma() * thermo_.p() / thermo_.rho());
+            // c_ = sqrt(thermo_.Cp() / thermo_.Cv() / thermo_.psi());
         };
 
         // Access to Lamb vector by reference

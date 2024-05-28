@@ -1,5 +1,7 @@
 #!/bin/sh
 wclean cwipiPstream
-wclean rhoCentralFoam_cwipi
+wclean cwipiAcousticCentralFoam
+wclean averagingAcousticCentralFoam
 wmake cwipiPstream
-wmake rhoCentralFoam_cwipi
+wmake cwipiAcousticCentralFoam
+wmake averagingAcousticCentralFoam
