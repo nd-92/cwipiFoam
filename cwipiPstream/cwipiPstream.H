@@ -156,7 +156,7 @@ namespace Foam
             }
         };
 
-// Pointwise interpolation
+        // Pointwise interpolation
         const volPointInterpolation pInterp_;
 
         // Send tag and status
