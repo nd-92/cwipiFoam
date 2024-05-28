@@ -24,4 +24,4 @@ EXE_LIBS = \
     -ldynamicFvMesh \
     -ltopoChangerFvMesh \
     -L$(FOAM_USER_LIBBIN) -lcwipiPstream \
-    -L$(HOME)/opt/lib64/nektar++
+    -L$(HOME)/opt/lib64/nektar++ -lcwp
