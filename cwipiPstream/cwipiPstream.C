@@ -42,7 +42,7 @@ namespace Foam
         const Foam::Time &runTime,
         const fvMesh &mesh,
         const psiThermo &thermo,
-        const cwipiFields &sourceFields)
+        const cwipiFields &fields)
         : pInterp_(mesh),
           sendTag(0),                                                                                                                                                       // Set send tag to 0
           status(0),                                                                                                                                                        // Set status to 0
@@ -57,23 +57,20 @@ namespace Foam
           sourceDamping_(IOobject("sourceDamping", runTime.timeName(), mesh, IOobject::READ_IF_PRESENT, IOobject::AUTO_WRITE), mesh, dimensionedScalar("one", dimless, 1)), // Source damping coefficient
           F_p_(IOobject("F_p", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(1, -3, -1, 0, 0, 0, 0)),                              // Continuity equation sources
           F_u_(IOobject("F_u", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(0, 1, -2, 0, 0, 0, 0)),                               // Momentum equation sources
-          runTime_(runTime),                                                                                                                                                //
+          runTime_(runTime),                                                                                                                                                // Run time
           mesh_(mesh),                                                                                                                                                      // Mesh
           thermo_(thermo),                                                                                                                                                  // Thermo model
-          sourceFields_(sourceFields),                                                                                                                                      // Instantaneous flow fields
+          fields_(fields),                                                                                                                                                  // Instantaneous flow fields
           F_0_p_(pInterp_.interpolate(F_p_ * 0)),                                                                                                                           // Pointwise interpolation of continuity equation sources
           F_0_u_(pInterp_.interpolate(F_u_ * 0)),                                                                                                                           // Pointwise interpolation of momentum equation sources
-                                                                                                                                                                            //   smoothingLength_("smoothingLength", dimensionSet(0, 1, 0, 0, 0, 0, 0), readScalar(runTime.controlDict().lookup("smoothingLength"))),                                                                                              // Laplacian smoothing length
-                                                                                                                                                                            //   DT_("DT", dimensionSet(0, 2, -1, 0, 0), smoothingLength_.value() * smoothingLength_.value() / mesh_.time().deltaTValue()),                                                                                                        //
-                                                                                                                                                                            //   pressureSmoother_(IOobject("pressureSmoother", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedScalar("zero", F_p_.dimensions(), 0), fixedValueFvPatchScalarField::typeName),               // Field for smoothing pressure sources
-                                                                                                                                                                            //   velocitySmoother_(IOobject("velocitySmoother", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedVector("zero", F_u_.dimensions(), vector(0, 0, 0)), fixedValueFvPatchScalarField::typeName), // Field for smoothing velocity sources
-          sourceFieldNames_(cwipiSourceFieldNames(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim")))))
+          sourceFieldNames_(cwipiSourceFieldNames(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim"))))),
+          fieldsToSend_(std::vector<scalar>((dim_ + 1) * mesh_.nPoints(), 0))
     {
         // Resize mesh vectors to fit
         pointCoords.resize(3 * mesh_.nPoints());
         connecIdx.resize(mesh_.nCells() + 1);
         connec.resize(mesh_.nCells() * 8);
-        fieldsToSend.resize((dim_ + 1) * mesh_.nPoints());
+        // fieldsToSend_.resize((dim_ + 1) * mesh_.nPoints());
 
         // Create mesh connectivity list
         forAll(mesh_.points(), i)
@@ -85,10 +82,10 @@ namespace Foam
             F_0_u_[i].x() = 0;
             F_0_u_[i].y() = 0;
             F_0_u_[i].z() = 0;
-            fieldsToSend[3 * i + 0] = 0;
-            fieldsToSend[3 * i + 1] = 0;
-            fieldsToSend[3 * i + 2] = 0;
-            fieldsToSend[3 * i + 3] = 0;
+            // fieldsToSend_[3 * i + 0] = 0;
+            // fieldsToSend_[3 * i + 1] = 0;
+            // fieldsToSend_[3 * i + 2] = 0;
+            // fieldsToSend_[3 * i + 3] = 0;
         }
         connecIdx[0] = 0;
         forAll(mesh_.cells(), i)
@@ -170,7 +167,7 @@ namespace Foam
             1,
             0,
             sourceFieldNames_,
-            fieldsToSend.data(),
+            fieldsToSend_.data(),
             &status);
 
         // Handle exchange status

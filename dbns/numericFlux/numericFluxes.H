@@ -26,48 +26,34 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef __CWIPI_SWITCH_H
-#define __CWIPI_SWITCH_H
+#include "makeBasicNumericFlux.H"
+#include "buiFlux.H"
+#include "slauFlux.H"
+#include "slau2Flux.H"
+#include "firstOrderLimiter.H"
+#include "BarthJespersenLimiter.H"
+#include "VenkatakrishnanLimiter.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-    class cwipiSwitch
-    {
-    public:
-        // Default constructor
-        inline cwipiSwitch(
-            const Foam::Time &runTime)
-            : isActive_(readBool(runTime.controlDict().lookup("cwipiSwitch")))
-        {
-            if (isActive())
-            {
-                Info << "CWIPI coupling enabled." << endl;
-            }
-            else
-            {
-                Info << "CWIPI coupling disabled." << endl;
-            }
-        };
+    /* * * * * * * * * * * * * * * Private Static Data * * * * * * * * * * * * * */
 
-        // Default destructor
-        inline ~cwipiSwitch(){};
+#define makeBasicNumericFluxForAllLimiters(Flux)        \
+    makeBasicNumericFlux(Flux, firstOrderLimiter);      \
+    makeBasicNumericFlux(Flux, BarthJespersenLimiter);  \
+    makeBasicNumericFlux(Flux, VenkatakrishnanLimiter); \
+    makeBasicNumericFlux(Flux, WangLimiter);            \
+    makeBasicNumericFlux(Flux, MichalakGoochLimiter);
 
-        // Return access to switch
-        inline constexpr const bool &isActive() const
-        {
-            return isActive_;
-        };
+    makeBasicNumericFluxForAllLimiters(buiFlux);
+    makeBasicNumericFluxForAllLimiters(slauFlux);
+    makeBasicNumericFluxForAllLimiters(slau2Flux);
 
-    private:
-        // Switch
-        const bool isActive_;
-    };
+    // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-}
-
-#endif
+} // End namespace Foam
 
 // ************************************************************************* //

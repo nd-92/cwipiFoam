@@ -24,49 +24,72 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Class
+    firstOrderLimiter
+
+Description
+    First order limiter: all second order terms are removed
+
+Author
+    Hrvoje Jasak
+
 \*---------------------------------------------------------------------------*/
 
-#ifndef __CWIPI_SWITCH_H
-#define __CWIPI_SWITCH_H
+#ifndef firstOrderLimiter_H
+#define firstOrderLimiter_H
+
+#include "vector.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-    class cwipiSwitch
+    /*---------------------------------------------------------------------------*\
+                          Class firstOrderLimiter Declaration
+    \*---------------------------------------------------------------------------*/
+
+    class firstOrderLimiter
     {
     public:
-        // Default constructor
-        inline cwipiSwitch(
-            const Foam::Time &runTime)
-            : isActive_(readBool(runTime.controlDict().lookup("cwipiSwitch")))
+        // Constructor
+
+        //- Construct null
+        inline firstOrderLimiter()
         {
-            if (isActive())
-            {
-                Info << "CWIPI coupling enabled." << endl;
-            }
-            else
-            {
-                Info << "CWIPI coupling disabled." << endl;
-            }
-        };
+        }
 
-        // Default destructor
-        inline ~cwipiSwitch(){};
+        // Destructor - default
 
-        // Return access to switch
-        inline constexpr const bool &isActive() const
+        // Member functions
+
+        //- Set scalar limiter value
+        inline void limiter(
+            scalar &lim,
+            const scalar &cellVolume,
+            const scalar &deltaOneMax,
+            const scalar &deltaOneMin,
+            const scalar &deltaTwo)
         {
-            return isActive_;
-        };
+            lim = 0;
+        }
 
-    private:
-        // Switch
-        const bool isActive_;
+        //- Set Type limiter
+        template <class Type>
+        inline void limiter(
+            Type &lim,
+            const scalar &cellVolume,
+            const Type &deltaOneMax,
+            const Type &deltaOneMin,
+            const Type &extrapolate)
+        {
+            lim = pTraits<Type>::zero;
+        }
     };
 
-}
+    // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace Foam
 
 #endif
 

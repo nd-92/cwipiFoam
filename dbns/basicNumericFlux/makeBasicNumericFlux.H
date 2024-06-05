@@ -24,49 +24,38 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+InClass
+    Foam::basicNumericFlux
+
+Description
+    Macros for creating fluxes (including limiters) for DBNS solver
+
 \*---------------------------------------------------------------------------*/
 
-#ifndef __CWIPI_SWITCH_H
-#define __CWIPI_SWITCH_H
+#ifndef makeBasicPsiThermo_H
+#define makeBasicPsiThermo_H
+
+#include "numericFlux.H"
+#include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-namespace Foam
-{
+#define makeBasicNumericFlux(Flux, Limiter) \
+                                            \
+    typedef numericFlux<Flux, Limiter>      \
+        Flux##Limiter;                      \
+                                            \
+    defineTemplateTypeNameAndDebugWithName( \
+        Flux##Limiter,                      \
+        #Flux #Limiter,                     \
+        0);                                 \
+                                            \
+    addToRunTimeSelectionTable(             \
+        basicNumericFlux,                   \
+        Flux##Limiter,                      \
+        state)
 
-    class cwipiSwitch
-    {
-    public:
-        // Default constructor
-        inline cwipiSwitch(
-            const Foam::Time &runTime)
-            : isActive_(readBool(runTime.controlDict().lookup("cwipiSwitch")))
-        {
-            if (isActive())
-            {
-                Info << "CWIPI coupling enabled." << endl;
-            }
-            else
-            {
-                Info << "CWIPI coupling disabled." << endl;
-            }
-        };
-
-        // Default destructor
-        inline ~cwipiSwitch(){};
-
-        // Return access to switch
-        inline constexpr const bool &isActive() const
-        {
-            return isActive_;
-        };
-
-    private:
-        // Switch
-        const bool isActive_;
-    };
-
-}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 

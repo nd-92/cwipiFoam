@@ -26,6 +26,11 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#ifndef __CWIPI_PSTREAM_H
+#define __CWIPI_PSTREAM_H
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
 #include "fvCFD.H"
 #include "volPointInterpolation.H"
 #include "volFields.H"
@@ -34,8 +39,6 @@ License
 #include "cwipiFields.H"
 #include "cwipiMeanFields.H"
 #include "fixedValueFvPatchFields.H"
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
@@ -47,7 +50,7 @@ namespace Foam
             const Foam::Time &runTime,
             const fvMesh &mesh,
             const psiThermo &thermo,
-            const cwipiFields &sourceFields);
+            const cwipiFields &fields);
 
         // Default destructor
         ~cwipiPstream();
@@ -122,11 +125,11 @@ namespace Foam
             // Compute continuity equation source
             // F_p = (rhoMean / c_p) * (DMean/Dt(sPrime))
             // ddt(s - sMean) = ddt(s) since ddt(sMean) = 0
-            F_p_ = entropyDerivativeSwitch * ((baseFlow_.rhoMean() / thermo_.Cp()) * (fvc::ddt(sourceFields_.s()) + (baseFlow_.UMean() & fvc::grad((sourceFields_.s() - baseFlow_.sMean()))))) * sourceDamping_;
+            F_p_ = entropyDerivativeSwitch * ((baseFlow_.rhoMean() / thermo_.Cp()) * (fvc::ddt(fields_.s()) + (baseFlow_.UMean() & fvc::grad((fields_.s() - baseFlow_.sMean()))))) * sourceDamping_;
 
             // Compute momentum equation source
             // F_u = (TPrime * grad(sMean)) - (sPrime * grad(TMean)) - LPrime;
-            F_u_ = ((entropyGradientSwitch * ((thermo_.T() - baseFlow_.TMean()) * fvc::grad(baseFlow_.sMean())) - ((sourceFields_.s() - baseFlow_.sMean()) * fvc::grad(baseFlow_.TMean()))) - (lambVectorSwitch * (sourceFields_.L() - baseFlow_.LMean()))) * sourceDamping_;
+            F_u_ = ((entropyGradientSwitch * ((thermo_.T() - baseFlow_.TMean()) * fvc::grad(baseFlow_.sMean())) - ((fields_.s() - baseFlow_.sMean()) * fvc::grad(baseFlow_.TMean()))) - (lambVectorSwitch * (fields_.L() - baseFlow_.LMean()))) * sourceDamping_;
 
             // smoothenSources();
 
@@ -134,24 +137,24 @@ namespace Foam
             F_0_p_ = pInterp_.interpolate(F_p_);
             F_0_u_ = pInterp_.interpolate(F_u_);
 
-            // Assign fieldsToSend for either 2D or 3D case
+            // Assign fieldsToSend_ for either 2D or 3D case
             if (isThreeDimensional_)
             {
                 forAll(mesh_.points(), i)
                 {
-                    fieldsToSend[(4 * i) + 0] = F_0_u_[i].x();
-                    fieldsToSend[(4 * i) + 1] = F_0_u_[i].y();
-                    fieldsToSend[(4 * i) + 2] = F_0_u_[i].z();
-                    fieldsToSend[(4 * i) + 3] = F_0_p_[i];
+                    fieldsToSend_[(4 * i) + 0] = F_0_u_[i].x();
+                    fieldsToSend_[(4 * i) + 1] = F_0_u_[i].y();
+                    fieldsToSend_[(4 * i) + 2] = F_0_u_[i].z();
+                    fieldsToSend_[(4 * i) + 3] = F_0_p_[i];
                 }
             }
             else
             {
                 forAll(mesh_.points(), i)
                 {
-                    fieldsToSend[(3 * i) + 0] = F_0_u_[i].x();
-                    fieldsToSend[(3 * i) + 1] = F_0_u_[i].y();
-                    fieldsToSend[(3 * i) + 2] = F_0_p_[i];
+                    fieldsToSend_[(3 * i) + 0] = F_0_u_[i].x();
+                    fieldsToSend_[(3 * i) + 1] = F_0_u_[i].y();
+                    fieldsToSend_[(3 * i) + 2] = F_0_p_[i];
                 }
             }
         };
@@ -192,7 +195,7 @@ namespace Foam
         const psiThermo &thermo_;
 
         // Cwipi fields object
-        const cwipiFields &sourceFields_;
+        const cwipiFields &fields_;
 
         // Point fields
         pointScalarField F_0_p_;
@@ -215,9 +218,13 @@ namespace Foam
         std::vector<int> connec = std::vector<int>();
 
         // Cwipi source array
-        std::vector<scalar> fieldsToSend = std::vector<scalar>();
+        std::vector<scalar> fieldsToSend_;
+
+        // cwipiSourceFields sourceFields_;
     };
 
 }
+
+#endif
 
 // ************************************************************************* //

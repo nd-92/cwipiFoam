@@ -24,49 +24,58 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Class
+    rungeKutta
+
+Description
+    Implementation of constexpr Runge-Kutta time integration coefficients
+
+SourceFiles
+    rungeKutta.H
+
 \*---------------------------------------------------------------------------*/
 
-#ifndef __CWIPI_SWITCH_H
-#define __CWIPI_SWITCH_H
+#ifndef rungeKutta_H
+#define rungeKutta_H
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-    class cwipiSwitch
+    /*---------------------------------------------------------------------------*\
+                               Class rungeKutta Declaration
+    \*---------------------------------------------------------------------------*/
+
+// Macro for Runge-Kutta time integration
+#define rkLoop(i) for (uint8_t i = 0; i < 4; i++)
+
+    class rungeKutta
     {
     public:
-        // Default constructor
-        inline cwipiSwitch(
-            const Foam::Time &runTime)
-            : isActive_(readBool(runTime.controlDict().lookup("cwipiSwitch")))
-        {
-            if (isActive())
-            {
-                Info << "CWIPI coupling enabled." << endl;
-            }
-            else
-            {
-                Info << "CWIPI coupling disabled." << endl;
-            }
-        };
+        // Constructor
+        constexpr rungeKutta(){};
 
-        // Default destructor
-        inline ~cwipiSwitch(){};
+        // Destructor
+        // constexpr ~rungeKutta(){};
 
-        // Return access to switch
-        inline constexpr const bool &isActive() const
+        // Return constexpr Runge-Kutta coefficient
+        constexpr const std::array<scalar, 4> &beta() const
         {
-            return isActive_;
-        };
+            return beta_;
+        }
 
     private:
-        // Switch
-        const bool isActive_;
+        // Runge-Kutta coefficients
+        static constexpr const std::array<scalar, 4> beta_ = {0.1100, 0.2766, 0.500, 1.000};
+        // static constexpr const scalar beta_[4] = {0.1100, 0.2766, 0.500, 1.000};
     };
 
-}
+    // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 

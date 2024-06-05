@@ -2,6 +2,8 @@
 wclean cwipiPstream
 wclean cwipiAcousticCentralFoam
 wclean averagingAcousticCentralFoam
+wclean averagingRhoGodunovTurbFoam
 wmake cwipiPstream
 wmake cwipiAcousticCentralFoam
 wmake averagingAcousticCentralFoam
+wmake averagingRhoGodunovTurbFoam

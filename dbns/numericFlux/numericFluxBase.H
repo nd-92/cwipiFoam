@@ -24,49 +24,63 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+Class
+    numericFluxBase
+
+Description
+    Base numeric flux class for density-based solvers
+
+Author
+    Aleksandar Jemcov
+    Rewrite by Hrvoje Jasak
+
+SourceFiles
+    numericFluxBase.H
+    numericFluxBase.C
+
 \*---------------------------------------------------------------------------*/
 
-#ifndef __CWIPI_SWITCH_H
-#define __CWIPI_SWITCH_H
+#ifndef numericFluxBase_H
+#define numericFluxBase_H
+
+#include "basicNumericFlux.H"
+#include "volFieldsFwd.H"
+#include "surfaceFieldsFwd.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-    class cwipiSwitch
+    /*---------------------------------------------------------------------------*\
+                            Class numericFluxBase Declaration
+    \*---------------------------------------------------------------------------*/
+
+    template <class Flux>
+    class numericFluxBase
+        : public basicNumericFlux,
+          public Flux
     {
     public:
-        // Default constructor
-        inline cwipiSwitch(
-            const Foam::Time &runTime)
-            : isActive_(readBool(runTime.controlDict().lookup("cwipiSwitch")))
+        // Constructors
+
+        //- Construct from mesh
+        inline numericFluxBase(const fvMesh &mesh)
+            : basicNumericFlux(mesh)
         {
-            if (isActive())
-            {
-                Info << "CWIPI coupling enabled." << endl;
-            }
-            else
-            {
-                Info << "CWIPI coupling disabled." << endl;
-            }
-        };
+        }
 
-        // Default destructor
-        inline ~cwipiSwitch(){};
-
-        // Return access to switch
-        inline constexpr const bool &isActive() const
+        //- Destructor
+        inline virtual ~numericFluxBase()
         {
-            return isActive_;
-        };
-
-    private:
-        // Switch
-        const bool isActive_;
+        }
     };
 
-}
+    // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 
