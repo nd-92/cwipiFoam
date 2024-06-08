@@ -1,9 +1,11 @@
 #!/bin/sh
 wclean cwipiPstream
 wclean cwipiAcousticCentralFoam
+wclean cwipiRhoGodunovTurbFoam
 wclean averagingAcousticCentralFoam
 wclean averagingRhoGodunovTurbFoam
 wmake cwipiPstream
 wmake cwipiAcousticCentralFoam
+wmake cwipiRhoGodunovTurbFoam
 wmake averagingAcousticCentralFoam
 wmake averagingRhoGodunovTurbFoam
