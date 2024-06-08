@@ -72,25 +72,6 @@ const volScalarField acousticDamping(
     mesh);
 const volScalarField noDamping = 1 - acousticDamping;
 
-// LES delta
-// volScalarField LESdelta(
-//     IOobject(
-//         "LESdelta",
-//         runTime.timeName(),
-//         mesh,
-//         IOobject::NO_READ,
-//         IOobject::AUTO_WRITE),
-//     mesh,
-//     dimensionedScalar("LESdelta", dimLength, 0));
-
-// if (mesh.objectRegistry::foundObject<volScalarField>("delta") == true)
-// {
-//     const volScalarField &delta = mesh.objectRegistry::lookupObject<volScalarField>("delta");
-
-//     LESdelta.internalFieldRef() = delta.internalField();
-//     LESdelta.boundaryFieldRef() = delta.boundaryField();
-// }
-
 // Acoustic Courant number CFL control
 acousticCourantNo<psiThermo> Co(U, mesh, thermo, runTime);
 

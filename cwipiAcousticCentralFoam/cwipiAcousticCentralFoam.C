@@ -39,7 +39,6 @@ Description
 
 #include "cwipiPstream.H"
 #include "fvCFD.H"
-// #include "dynamicFvMesh.H"
 #include "psiThermo.H"
 #include "turbulentFluidThermoModel.H"
 #include "fixedRhoFvPatchScalarField.H"
@@ -62,21 +61,9 @@ int main(int argc, char *argv[])
 #include "setRootCaseLists.H"
 #include "createTime.H"
 #include "createMesh.H"
-// #include "createDynamicFvMesh.H"
 #include "createFields.H"
 #include "createFieldRefs.H"
 #include "createTimeControls.H"
-
-    // Read CWIPI switch
-    // cwipiSwitch cwipi(
-    //     runTime);
-
-    // Create CWIPI fields
-    cwipiFields couplingFields(
-        mesh,
-        runTime,
-        U,
-        thermo);
 
     turbulence->validate();
 
@@ -94,21 +81,15 @@ int main(int argc, char *argv[])
     Info << "Starting time loop" << endl;
     Info << endl;
 
-    // Is solver running in coupled mode?
-    // if (cwipi.isActive())
-    //{
     // Create CWIPI coupling
     cwipiPstream coupling(
         runTime,
         mesh,
         thermo,
-        couplingFields);
+        U);
 
     while (runTime.run())
     {
-        // Update CWIPI fields
-        couplingFields.update();
-
         // Send sources at correct time step
         if (coupling.sendNow())
         {
@@ -127,24 +108,6 @@ int main(int argc, char *argv[])
         // Print execution time
         runTime.printExecutionTime(Info);
     }
-    //}
-    //     else
-    //     {
-    //         while (runTime.run())
-    //         {
-    //             // Update CWIPI fields
-    //             couplingFields.update();
-
-    //             // Execute main body of solver
-    // #include "cwipiAcousticCentralFoam.H"
-
-    //             // Do I/O
-    //             runTime.write();
-
-    //             // Print execution time
-    //             runTime.printExecutionTime(Info);
-    //         }
-    //     }
 
     Info << "End" << endl;
 

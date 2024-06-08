@@ -50,7 +50,7 @@ namespace Foam
             const Foam::Time &runTime,
             const fvMesh &mesh,
             const psiThermo &thermo,
-            const cwipiFields &fields);
+            const volVectorField &U);
 
         // Default destructor
         ~cwipiPstream();
@@ -60,6 +60,12 @@ namespace Foam
 
         // Advance time step
         void updateTime();
+
+        // Public access to speed of sound
+        inline volScalarField const &c() const
+        {
+            return fields_.c();
+        }
 
         // Evaluate send condition
         inline constexpr const Foam::Switch sendNow() const
@@ -159,6 +165,15 @@ namespace Foam
             }
         };
 
+        // Run time
+        const Time &runTime_;
+
+        // Mesh
+        const fvMesh &mesh_;
+
+        // Thermo
+        const psiThermo &thermo_;
+
         // Pointwise interpolation
         const volPointInterpolation pInterp_;
 
@@ -180,22 +195,13 @@ namespace Foam
         // Mean flow fields
         const cwipiMeanFields baseFlow_;
 
+        // Cwipi fields object
+        cwipiFields fields_;
+
         // Acoustic sources and damping
         const volScalarField sourceDamping_;
         volScalarField F_p_;
         volVectorField F_u_;
-
-        // Run time
-        const Time &runTime_;
-
-        // Mesh
-        const fvMesh &mesh_;
-
-        // Thermo
-        const psiThermo &thermo_;
-
-        // Cwipi fields object
-        const cwipiFields &fields_;
 
         // Point fields
         pointScalarField F_0_p_;

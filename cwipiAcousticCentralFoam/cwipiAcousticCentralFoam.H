@@ -5,9 +5,6 @@ if (!LTS)
 #include "setDeltaT.H"
 
     ++runTime;
-
-    // Do any mesh changes
-    // mesh.update();
 }
 
 // --- Directed interpolation of primitive fields onto faces
@@ -37,16 +34,7 @@ phiv_pos.setOriented(false);
 surfaceScalarField phiv_neg("phiv_neg", U_neg &mesh.Sf());
 phiv_neg.setOriented(false);
 
-// Make fluxes relative to mesh-motion
-// if (mesh.moving())
-// {
-//     surfaceScalarField meshPhi(mesh.phi());
-//     meshPhi.setOriented(false);
-//     phiv_pos -= meshPhi;
-//     phiv_neg -= meshPhi;
-// }
-
-const volScalarField &c = couplingFields.c();
+const volScalarField &c = coupling.c();
 
 const surfaceScalarField cSf_pos("cSf_pos", interpolate(c, pos, T.name()) * mesh.magSf());
 
@@ -119,22 +107,22 @@ const surfaceVectorField phiUp(phiU + (a_pos * p_pos + a_neg * p_neg) * mesh.Sf(
 
 const surfaceScalarField phiEp("phiEp", aphiv_pos *(rho_pos *(e_pos + 0.5 * magSqr(U_pos)) + p_pos) + aphiv_neg * (rho_neg * (e_neg + 0.5 * magSqr(U_neg)) + p_neg) + aSf * p_pos - aSf * p_neg);
 
-// Make flux for pressure-work absolute
-// if (mesh.moving())
-// {
-//     surfaceScalarField meshPhi(mesh.phi());
-//     meshPhi.setOriented(false);
-//     phiEp += meshPhi * (a_pos * p_pos + a_neg * p_neg);
-// }
-
 const volScalarField muEff("muEff", turbulence->muEff());
 const volTensorField tauMC("tauMC", muEff *dev2(Foam::T(fvc::grad(U))));
 
 // --- Solve density
-solve(fvm::ddt(rho) + fvc::div(phi));
+solve                   //
+    (                   //
+        fvm::ddt(rho)   //
+        + fvc::div(phi) //
+    );                  //
 
 // --- Solve momentum
-solve(fvm::ddt(rhoU) + fvc::div(phiUp));
+solve                     //
+    (                     //
+        fvm::ddt(rhoU)    //
+        + fvc::div(phiUp) //
+    );                    //
 
 U.ref() = rhoU() / rho();
 U.correctBoundaryConditions();
@@ -142,12 +130,14 @@ rhoU.boundaryFieldRef() == rho.boundaryField() * U.boundaryField();
 
 if (!inviscid)
 {
-    solve(                         //
-        fvm::ddt(rho, U)           //
-        - fvc::ddt(rho, U)         //
-        - fvm::laplacian(muEff, U) //
-        - fvc::div(tauMC));        //
-    rhoU = rho * U;                //
+    solve                              //
+        (                              //
+            fvm::ddt(rho, U)           //
+            - fvc::ddt(rho, U)         //
+            - fvm::laplacian(muEff, U) //
+            - fvc::div(tauMC)          //
+        );                             //
+    rhoU = rho * U;                    //
 }
 
 // --- Solve energy
@@ -157,10 +147,12 @@ const surfaceScalarField sigmaDotU(                          //
      + fvc::dotInterpolate(mesh.Sf(), tauMC)) &              //
         (a_pos * U_pos + a_neg * U_neg));                    //
 
-solve(                      //
-    fvm::ddt(rhoE)          //
-    + fvc::div(phiEp)       //
-    - fvc::div(sigmaDotU)); //
+solve                         //
+    (                         //
+        fvm::ddt(rhoE)        //
+        + fvc::div(phiEp)     //
+        - fvc::div(sigmaDotU) //
+    );                        //
 
 e = rhoE / rho - 0.5 * magSqr(U);
 e.correctBoundaryConditions();
@@ -169,12 +161,14 @@ rhoE.boundaryFieldRef() == rho.boundaryField() * (e.boundaryField() + 0.5 * magS
 
 if (!inviscid)
 {
-    solve(                                            //
-        fvm::ddt(rho, e)                              //
-        - fvc::ddt(rho, e)                            //
-        - fvm::laplacian(turbulence->alphaEff(), e)); //
-    thermo.correct();                                 //
-    rhoE = rho * (e + 0.5 * magSqr(U));               //
+    solve                                               //
+        (                                               //
+            fvm::ddt(rho, e)                            //
+            - fvc::ddt(rho, e)                          //
+            - fvm::laplacian(turbulence->alphaEff(), e) //
+        );                                              //
+    thermo.correct();                                   //
+    rhoE = rho * (e + 0.5 * magSqr(U));                 //
 }
 
 p.ref() = rho() / psi();

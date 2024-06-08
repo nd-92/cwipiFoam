@@ -38,7 +38,6 @@ Description
 \*---------------------------------------------------------------------------*/
 
 #include "fvCFD.H"
-// #include "dynamicFvMesh.H"
 #include "psiThermo.H"
 #include "turbulentFluidThermoModel.H"
 #include "fixedRhoFvPatchScalarField.H"
@@ -62,7 +61,6 @@ int main(int argc, char *argv[])
 #include "setRootCaseLists.H"
 #include "createTime.H"
 #include "createMesh.H"
-// #include "createDynamicFvMesh.H"
 #include "createFields.H"
 #include "createFieldRefs.H"
 #include "createTimeControls.H"

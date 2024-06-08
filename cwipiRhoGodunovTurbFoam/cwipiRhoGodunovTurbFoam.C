@@ -60,13 +60,6 @@ int main(int argc, char *argv[])
 #include "createFields.H"
 #include "createTimeControls.H"
 
-    // Create CWIPI fields
-    cwipiFields couplingFields(
-        mesh,
-        runTime,
-        U,
-        thermo);
-
     // Validate turbulence
     turbulence->validate();
 
@@ -78,15 +71,12 @@ int main(int argc, char *argv[])
         runTime,
         mesh,
         thermo,
-        couplingFields);
+        U);
 
     Info << "Starting time loop" << endl;
 
     while (runTime.run())
     {
-        // Update CWIPI fields
-        couplingFields.update();
-
         // Send sources at correct time step
         if (coupling.sendNow())
         {

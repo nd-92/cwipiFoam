@@ -42,27 +42,27 @@ namespace Foam
         const Foam::Time &runTime,
         const fvMesh &mesh,
         const psiThermo &thermo,
-        const cwipiFields &fields)
-        : pInterp_(mesh),
-          sendTag(0),                                                                                                                                                       // Set send tag to 0
-          status(0),                                                                                                                                                        // Set status to 0
-          dim_(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim")))),                                                                                    // Get dimension
-          isThreeDimensional_(static_cast<bool>(readInt(runTime.controlDict().lookup("cwipiDim")) - 2)),                                                                    // Get switch for 3d
-          lambVectorSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiLambVector")))),                                                           // Cast lamb vector coefficient to scalar
-          entropyGradientSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiEntropy")))),                                                         // Cast entropy gradient coefficient to scalar
-          entropyDerivativeSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiDsDt")))),                                                          // Cast entropy material derivative coefficient to scalar
-          cwipiStep(readInt(runTime.controlDict().lookup("cwipiStep"))),                                                                                                    // Get time step
-          cwipiTimeStep(readInt(runTime.controlDict().lookup("cwipiStep"))),                                                                                                // Assign time step
-          baseFlow_(cwipiMeanFields(mesh, runTime)),                                                                                                                        // Mean flow fields
-          sourceDamping_(IOobject("sourceDamping", runTime.timeName(), mesh, IOobject::READ_IF_PRESENT, IOobject::AUTO_WRITE), mesh, dimensionedScalar("one", dimless, 1)), // Source damping coefficient
-          F_p_(IOobject("F_p", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(1, -3, -1, 0, 0, 0, 0)),                              // Continuity equation sources
-          F_u_(IOobject("F_u", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), mesh, dimensionSet(0, 1, -2, 0, 0, 0, 0)),                               // Momentum equation sources
-          runTime_(runTime),                                                                                                                                                // Run time
-          mesh_(mesh),                                                                                                                                                      // Mesh
-          thermo_(thermo),                                                                                                                                                  // Thermo model
-          fields_(fields),                                                                                                                                                  // Instantaneous flow fields
-          F_0_p_(pInterp_.interpolate(F_p_ * 0)),                                                                                                                           // Pointwise interpolation of continuity equation sources
-          F_0_u_(pInterp_.interpolate(F_u_ * 0)),                                                                                                                           // Pointwise interpolation of momentum equation sources
+        const volVectorField &U)
+        : runTime_(runTime),                                                                                                                                                                                                                                                                                                                       // Run time
+          mesh_(mesh),                                                                                                                                                                                                                                                                                                                             // Mesh
+          thermo_(thermo),                                                                                                                                                                                                                                                                                                                         // Thermo model
+          pInterp_(mesh),                                                                                                                                                                                                                                                                                                                          // Pointwise interpolation
+          sendTag(0),                                                                                                                                                                                                                                                                                                                              // Set send tag to 0
+          status(0),                                                                                                                                                                                                                                                                                                                               // Set status to 0
+          dim_(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim")))),                                                                                                                                                                                                                                                           // Get dimension
+          isThreeDimensional_(static_cast<bool>(readInt(runTime.controlDict().lookup("cwipiDim")) - 2)),                                                                                                                                                                                                                                           // Get switch for 3d
+          lambVectorSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiLambVector")))),                                                                                                                                                                                                                                  // Cast lamb vector coefficient to scalar
+          entropyGradientSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiEntropy")))),                                                                                                                                                                                                                                // Cast entropy gradient coefficient to scalar
+          entropyDerivativeSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiDsDt")))),                                                                                                                                                                                                                                 // Cast entropy material derivative coefficient to scalar
+          cwipiStep(readInt(runTime.controlDict().lookup("cwipiStep"))),                                                                                                                                                                                                                                                                           // Get time step
+          cwipiTimeStep(readInt(runTime.controlDict().lookup("cwipiStep"))),                                                                                                                                                                                                                                                                       // Assign time step
+          baseFlow_(cwipiMeanFields(mesh, runTime)),                                                                                                                                                                                                                                                                                               // Mean flow fields
+          fields_(cwipiFields(mesh, runTime, U, thermo)),                                                                                                                                                                                                                                                                                          // Instantaneous flow fields
+          sourceDamping_(IOobject("sourceDamping", runTime.timeName(), mesh, IOobject::READ_IF_PRESENT, IOobject::AUTO_WRITE), mesh, dimensionedScalar("one", dimless, 1)),                                                                                                                                                                        // Source damping coefficient
+          F_p_(IOobject("F_p", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), entropyDerivativeSwitch * ((baseFlow_.rhoMean() / thermo_.Cp()) * (fvc::ddt(fields_.s()) + (baseFlow_.UMean() & fvc::grad((fields_.s() - baseFlow_.sMean()))))) * sourceDamping_),                                                              // Continuity equation sources
+          F_u_(IOobject("F_u", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), ((entropyGradientSwitch * ((thermo_.T() - baseFlow_.TMean()) * fvc::grad(baseFlow_.sMean())) - ((fields_.s() - baseFlow_.sMean()) * fvc::grad(baseFlow_.TMean()))) - (lambVectorSwitch * (fields_.L() - baseFlow_.LMean()))) * sourceDamping_), // Momentum equation sources
+          F_0_p_(pInterp_.interpolate(F_p_)),                                                                                                                                                                                                                                                                                                      // Pointwise interpolation of continuity equation sources
+          F_0_u_(pInterp_.interpolate(F_u_)),                                                                                                                                                                                                                                                                                                      // Pointwise interpolation of momentum equation sources
           sourceFieldNames_(cwipiSourceFieldNames(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim"))))),
           fieldsToSend_(std::vector<scalar>((dim_ + 1) * mesh_.nPoints(), 0))
     {
@@ -70,7 +70,6 @@ namespace Foam
         pointCoords.resize(3 * mesh_.nPoints());
         connecIdx.resize(mesh_.nCells() + 1);
         connec.resize(mesh_.nCells() * 8);
-        // fieldsToSend_.resize((dim_ + 1) * mesh_.nPoints());
 
         // Create mesh connectivity list
         forAll(mesh_.points(), i)
@@ -78,14 +77,6 @@ namespace Foam
             pointCoords[3 * i + 0] = mesh_.points()[i].x();
             pointCoords[3 * i + 1] = mesh_.points()[i].y();
             pointCoords[3 * i + 2] = mesh_.points()[i].z();
-            F_0_p_[i] = 0;
-            F_0_u_[i].x() = 0;
-            F_0_u_[i].y() = 0;
-            F_0_u_[i].z() = 0;
-            // fieldsToSend_[3 * i + 0] = 0;
-            // fieldsToSend_[3 * i + 1] = 0;
-            // fieldsToSend_[3 * i + 2] = 0;
-            // fieldsToSend_[3 * i + 3] = 0;
         }
         connecIdx[0] = 0;
         forAll(mesh_.cells(), i)
@@ -155,6 +146,8 @@ namespace Foam
     // Send fields
     void cwipiPstream::send()
     {
+        fields_.update();
+
         // Update source fields
         updateSources();
 
