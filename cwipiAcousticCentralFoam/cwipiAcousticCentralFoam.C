@@ -90,11 +90,8 @@ int main(int argc, char *argv[])
 
     while (runTime.run())
     {
-        // Send sources at correct time step
-        if (coupling.sendNow())
-        {
-            coupling.send();
-        }
+        // Send sources
+        coupling.send();
 
         // Execute main body of solver
 #include "cwipiAcousticCentralFoam.H"

@@ -78,10 +78,7 @@ int main(int argc, char *argv[])
     while (runTime.run())
     {
         // Send sources at correct time step
-        if (coupling.sendNow())
-        {
-            coupling.send();
-        }
+        coupling.send();
 
         // Execute main solver loop
 #include "cwipiRhoGodunovTurbFoam.H"

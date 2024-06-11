@@ -68,14 +68,14 @@ namespace Foam
         }
 
         // Evaluate send condition
-        inline constexpr const Foam::Switch sendNow() const
+        [[nodiscard]] inline constexpr const Foam::Switch sendNow() const
         {
             return (cwipiTimeStep == cwipiStep);
         };
 
     private:
         // Return the names of the source fields
-        inline const char *cwipiSourceFieldNames(const uint8_t dim)
+        [[nodiscard]] inline const char *cwipiSourceFieldNames(const uint8_t dim)
         {
             switch (dim)
             {

@@ -88,6 +88,26 @@ namespace Foam
             }
         }
 
+        if (isThreeDimensional_)
+        {
+            forAll(mesh_.points(), i)
+            {
+                fieldsToSend_[(4 * i) + 0] = F_0_u_[i].x();
+                fieldsToSend_[(4 * i) + 1] = F_0_u_[i].y();
+                fieldsToSend_[(4 * i) + 2] = F_0_u_[i].z();
+                fieldsToSend_[(4 * i) + 3] = F_0_p_[i];
+            }
+        }
+        else
+        {
+            forAll(mesh_.points(), i)
+            {
+                fieldsToSend_[(3 * i) + 0] = F_0_u_[i].x();
+                fieldsToSend_[(3 * i) + 1] = F_0_u_[i].y();
+                fieldsToSend_[(3 * i) + 2] = F_0_p_[i];
+            }
+        }
+
         // Add local control parameters
         cwipi_add_local_int_control_parameter(
             "nSendVars",
@@ -151,32 +171,35 @@ namespace Foam
         // Update source fields
         updateSources();
 
-        // Send data
-        cwipi_issend(
-            "cwipiFoam",
-            "ex1",
-            sendTag,
-            dim_ + 1,
-            1,
-            0,
-            sourceFieldNames_,
-            fieldsToSend_.data(),
-            &status);
-
-        // Handle exchange status
-        switch (status)
+        if (sendNow())
         {
-        case CWIPI_EXCHANGE_OK:
-            // Info << "Exchange Ok" << endl;
-            break;
-        case CWIPI_EXCHANGE_BAD_RECEIVING:
-            throw std::runtime_error("Error: Bad receive status.");
-            // Info << "Bad receiving" << endl;
-            break;
-        default:
-            throw std::runtime_error("Error: Undefined receive status.");
-            // Info << "Error: bad exchange status" << endl;
-            break;
+            // Send data
+            cwipi_issend(
+                "cwipiFoam",
+                "ex1",
+                sendTag,
+                dim_ + 1,
+                1,
+                0,
+                sourceFieldNames_,
+                fieldsToSend_.data(),
+                &status);
+
+            // Handle exchange status
+            switch (status)
+            {
+            case CWIPI_EXCHANGE_OK:
+                // Info << "Exchange Ok" << endl;
+                break;
+            case CWIPI_EXCHANGE_BAD_RECEIVING:
+                throw std::runtime_error("Error: Bad receive status.");
+                // Info << "Bad receiving" << endl;
+                break;
+            default:
+                throw std::runtime_error("Error: Undefined receive status.");
+                // Info << "Error: bad exchange status" << endl;
+                break;
+            }
         }
     };
 
