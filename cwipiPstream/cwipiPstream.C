@@ -66,8 +66,8 @@ namespace Foam
           sourceFieldNames_(cwipiSourceFieldNames(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim"))))),
           fieldsToSend_(std::vector<scalar>((dim_ + 1) * mesh_.nPoints(), 0)),
           DT_(initialiseSmoothingCoefficient(mesh_, runTime_)),
-          pressureSmoother_(IOobject("f_U", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedScalar("zero", F_p_.dimensions(), 0), fixedValueFvPatchScalarField::typeName),
-          velocitySmoother_(IOobject("f_p", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedVector("zero", F_u_.dimensions(), vector(0, 0, 0)), fixedValueFvPatchScalarField::typeName)
+          pressureSmoother_(IOobject("f_p", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedScalar("zero", F_p_.dimensions(), 0), fixedValueFvPatchScalarField::typeName),
+          velocitySmoother_(IOobject("f_U", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedVector("zero", F_u_.dimensions(), vector(0, 0, 0)), fixedValueFvPatchScalarField::typeName)
     {
         // Resize mesh vectors to fit
         pointCoords.resize(3 * mesh_.nPoints());
