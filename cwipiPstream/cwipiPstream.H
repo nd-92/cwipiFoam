@@ -93,38 +93,55 @@ namespace Foam
             }
         };
 
+        [[nodiscard]] inline const volScalarField initialiseSmoothingCoefficient(
+            const fvMesh &__mesh,
+            const Time &__runTime) const
+        {
+            // Initialise the field to zero
+            volScalarField DT(
+                IOobject(
+                    "DT",
+                    __runTime.timeName(),
+                    __mesh,
+                    IOobject::NO_READ,
+                    IOobject::NO_WRITE),
+                __mesh,
+                dimensionedScalar(
+                    "zero",
+                    dimensionSet(0, 2, -1, 0, 0),
+                    0));
+
+// Scale it via volume ^ (2/3) * dt
+            forAll(__mesh.cells(), i)
+            {
+                DT[i] = pow(__mesh.V()[i], 2 / 3) * __runTime.deltaTValue();
+            }
+
+// Multiply by a dimensionless scale factor
+            return DT * dimensionedScalar("zero", dimless, __runTime.controlDict().lookupOrDefault("smoothingScale", 1));
+        };
+
         // Smoothen source fields
-        // inline void smoothenSources()
-        // {
-        //     // Create scalar smooth field from virgin scalar smooth field template
-        //     // volScalarField &pressureSmoother = pressureSmoother_;
-        //     // pressureSmoother.dimensions().reset(F_p_.dimensions());
-        //     // pressureSmoother == F_p_;
-        //     // pressureSmoother.correctBoundaryConditions();
-        //     // pressureSmoother.oldTime().dimensions().reset(F_p_.dimensions());
-        //     // pressureSmoother.oldTime() = F_p_;
-        //     // pressureSmoother.oldTime().correctBoundaryConditions();
+        inline void smoothenSources()
+        {
+            // Smoothen the continuity sources
+            pressureSmoother_ == F_p_;
+            pressureSmoother_.correctBoundaryConditions();
+            pressureSmoother_.oldTime() = F_p_;
+            pressureSmoother_.oldTime().correctBoundaryConditions();
+            solve(fvm::ddt(pressureSmoother_) - fvm::laplacian(DT_, pressureSmoother_));
+            F_p_ = pressureSmoother_;
+            F_p_.correctBoundaryConditions();
 
-        //     // Create vector smooth field from virgin vector smooth field template
-        //     // volVectorField &velocitySmoother = velocitySmoother_;
-        //     // velocitySmoother.dimensions().reset(F_u_.dimensions());
-        //     // velocitySmoother == F_u_;
-        //     // velocitySmoother.correctBoundaryConditions();
-        //     // velocitySmoother.oldTime().dimensions().reset(F_u_.dimensions());
-        //     // velocitySmoother.oldTime() = F_u_;
-        //     // velocitySmoother.oldTime().correctBoundaryConditions();
-
-        //     // Laplacian smoothing
-        //     solve(fvm::ddt(F_p_) - fvm::laplacian(DT_, F_p_));
-        //     solve(fvm::ddt(F_u_) - fvm::laplacian(DT_, F_u_));
-
-        //     // Assign smoothened values
-        //     // F_p_ = pressureSmoother;
-        //     F_p_.correctBoundaryConditions();
-
-        //     // F_u_ = velocitySmoother;
-        //     F_u_.correctBoundaryConditions();
-        // }
+            // Smoothen the momentum sources
+            velocitySmoother_ == F_u_;
+            velocitySmoother_.correctBoundaryConditions();
+            velocitySmoother_.oldTime() = F_u_;
+            velocitySmoother_.oldTime().correctBoundaryConditions();
+            solve(fvm::ddt(velocitySmoother_) - fvm::laplacian(DT_, velocitySmoother_));
+            F_u_ = velocitySmoother_;
+            F_u_.correctBoundaryConditions();
+        }
 
         // Update source fields to latest time step
         inline void updateSources()
@@ -138,11 +155,11 @@ namespace Foam
             // F_u = (TPrime * grad(sMean)) - (sPrime * grad(TMean)) - LPrime;
             F_u_ = ((entropyGradientSwitch * ((thermo_.T() - baseFlow_.TMean()) * fvc::grad(baseFlow_.sMean())) - ((fields_.s() - baseFlow_.sMean()) * fvc::grad(baseFlow_.TMean()))) - (lambVectorSwitch * (fields_.L() - baseFlow_.LMean()))) * sourceDamping_;
 
-            // smoothenSources();
+            smoothenSources();
 
             // Pointwise interpolation of sources
-            F_0_p_ = pInterp_.interpolate(F_p_);
-            F_0_u_ = pInterp_.interpolate(F_u_);
+            F_0_p_ = pInterp_.interpolate(pressureSmoother_);
+            F_0_u_ = pInterp_.interpolate(velocitySmoother_);
 
             // Assign fieldsToSend_ for either 2D or 3D case
             if (isThreeDimensional_)
@@ -208,14 +225,6 @@ namespace Foam
         pointScalarField F_0_p_;
         pointVectorField F_0_u_;
 
-        // Laplacian smoothing length
-        // const dimensionedScalar smoothingLength_;
-        // const dimensionedScalar DT_;
-
-        // Laplacian smoothing fields
-        // volScalarField pressureSmoother_;
-        // volVectorField velocitySmoother_;
-
         // List of argument names
         const char *sourceFieldNames_;
 
@@ -227,7 +236,10 @@ namespace Foam
         // Cwipi source array
         std::vector<scalar> fieldsToSend_;
 
-        // cwipiSourceFields sourceFields_;
+        // Laplacian smoothing coefficient
+        const volScalarField DT_;
+        volScalarField pressureSmoother_;
+        volVectorField velocitySmoother_;
     };
 
 }

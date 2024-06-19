@@ -64,7 +64,10 @@ namespace Foam
           F_0_p_(pInterp_.interpolate(F_p_)),                                                                                                                                                                                                                                                                                                      // Pointwise interpolation of continuity equation sources
           F_0_u_(pInterp_.interpolate(F_u_)),                                                                                                                                                                                                                                                                                                      // Pointwise interpolation of momentum equation sources
           sourceFieldNames_(cwipiSourceFieldNames(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim"))))),
-          fieldsToSend_(std::vector<scalar>((dim_ + 1) * mesh_.nPoints(), 0))
+          fieldsToSend_(std::vector<scalar>((dim_ + 1) * mesh_.nPoints(), 0)),
+          DT_(initialiseSmoothingCoefficient(mesh_, runTime_)),
+          pressureSmoother_(IOobject("f_U", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedScalar("zero", F_p_.dimensions(), 0), fixedValueFvPatchScalarField::typeName),
+          velocitySmoother_(IOobject("f_p", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedVector("zero", F_u_.dimensions(), vector(0, 0, 0)), fixedValueFvPatchScalarField::typeName)
     {
         // Resize mesh vectors to fit
         pointCoords.resize(3 * mesh_.nPoints());
