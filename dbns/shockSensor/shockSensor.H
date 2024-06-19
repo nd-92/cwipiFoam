@@ -72,7 +72,7 @@ namespace Foam
                       runTime.timeName(),
                       mesh,
                       IOobject::NO_READ,
-                      IOobject::AUTO_WRITE),
+                      IOobject::NO_WRITE),
                   mag(fvc::grad(thermo_.rho())) / rhoGradRef_),
               USmall_(dimensionedScalar("USmall", dimLength / dimTime, SMALL)),
               cellScales_(cellScalesI(mesh))

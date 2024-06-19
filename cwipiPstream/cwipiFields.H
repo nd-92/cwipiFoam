@@ -51,7 +51,7 @@ namespace Foam
                       runTime.timeName(),                                                                                                                                                         //
                       mesh,                                                                                                                                                                       //
                       IOobject::NO_READ,                                                                                                                                                          //
-                      IOobject::AUTO_WRITE),                                                                                                                                                      //
+                      IOobject::NO_WRITE),                                                                                                                                                        //
                   fvc::curl(U_) ^ U_),                                                                                                                                                            //
               s_(                                                                                                                                                                                 //
                   IOobject(                                                                                                                                                                       //
@@ -59,7 +59,7 @@ namespace Foam
                       runTime.timeName(),                                                                                                                                                         //
                       mesh,                                                                                                                                                                       //
                       IOobject::NO_READ,                                                                                                                                                          //
-                      IOobject::AUTO_WRITE),                                                                                                                                                      //
+                      IOobject::NO_WRITE),                                                                                                                                                        //
                   (thermo_.Cp() * log(thermo_.T() / Foam::constant::standard::Tstd)) - ((Foam::constant::physicoChemical::R / thermo_.W()) * log(thermo_.p() / Foam::constant::standard::Pstd))), //
               c_(                                                                                                                                                                                 //
                   IOobject(                                                                                                                                                                       //
@@ -67,7 +67,7 @@ namespace Foam
                       runTime.timeName(),                                                                                                                                                         //
                       mesh,                                                                                                                                                                       //
                       IOobject::NO_READ,                                                                                                                                                          //
-                      IOobject::AUTO_WRITE),                                                                                                                                                      //
+                      IOobject::NO_WRITE),                                                                                                                                                        //
                   Foam::sqrt(thermo_.gamma() * thermo_.p() / thermo_.rho()))
         {
             Info << "CWIPI source fields allocated." << endl;

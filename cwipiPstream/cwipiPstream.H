@@ -92,36 +92,37 @@ namespace Foam
                 break;
             }
         };
+
         // Smoothen source fields
         // inline void smoothenSources()
         // {
         //     // Create scalar smooth field from virgin scalar smooth field template
-        //     volScalarField &pressureSmoother = pressureSmoother_;
+        //     // volScalarField &pressureSmoother = pressureSmoother_;
         //     // pressureSmoother.dimensions().reset(F_p_.dimensions());
-        //     pressureSmoother == F_p_;
-        //     pressureSmoother.correctBoundaryConditions();
+        //     // pressureSmoother == F_p_;
+        //     // pressureSmoother.correctBoundaryConditions();
         //     // pressureSmoother.oldTime().dimensions().reset(F_p_.dimensions());
-        //     pressureSmoother.oldTime() = F_p_;
-        //     pressureSmoother.oldTime().correctBoundaryConditions();
+        //     // pressureSmoother.oldTime() = F_p_;
+        //     // pressureSmoother.oldTime().correctBoundaryConditions();
 
         //     // Create vector smooth field from virgin vector smooth field template
-        //     volVectorField &velocitySmoother = velocitySmoother_;
+        //     // volVectorField &velocitySmoother = velocitySmoother_;
         //     // velocitySmoother.dimensions().reset(F_u_.dimensions());
-        //     velocitySmoother == F_u_;
-        //     velocitySmoother.correctBoundaryConditions();
+        //     // velocitySmoother == F_u_;
+        //     // velocitySmoother.correctBoundaryConditions();
         //     // velocitySmoother.oldTime().dimensions().reset(F_u_.dimensions());
-        //     velocitySmoother.oldTime() = F_u_;
-        //     velocitySmoother.oldTime().correctBoundaryConditions();
+        //     // velocitySmoother.oldTime() = F_u_;
+        //     // velocitySmoother.oldTime().correctBoundaryConditions();
 
         //     // Laplacian smoothing
-        //     solve(fvm::ddt(pressureSmoother) - fvm::laplacian(DT_, pressureSmoother));
-        //     solve(fvm::ddt(velocitySmoother) - fvm::laplacian(DT_, velocitySmoother));
+        //     solve(fvm::ddt(F_p_) - fvm::laplacian(DT_, F_p_));
+        //     solve(fvm::ddt(F_u_) - fvm::laplacian(DT_, F_u_));
 
         //     // Assign smoothened values
-        //     F_p_ = pressureSmoother;
+        //     // F_p_ = pressureSmoother;
         //     F_p_.correctBoundaryConditions();
 
-        //     F_u_ = velocitySmoother;
+        //     // F_u_ = velocitySmoother;
         //     F_u_.correctBoundaryConditions();
         // }
 

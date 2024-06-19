@@ -135,7 +135,10 @@ namespace Foam
         // Sync and dump
         cwipi_synchronize_control_parameter(
             "FOAM_APE");
-        cwipi_dump_application_properties();
+        if (static_cast<bool>(runTime.controlDict().lookupOrDefault("cwipiDumpProperties", false)))
+        {
+            cwipi_dump_application_properties();
+        }
 
         // Get send tag
         sendTag = cwipi_get_distant_int_control_parameter(
@@ -158,6 +161,14 @@ namespace Foam
         cwipi_locate(
             "cwipiFoam");
         Info << "Interpolation located successfully." << endl;
+
+        // char *fileName = static_cast<char*>("cwipiLocationDict");
+
+        // cwipi_open_location_file("cwipiFoam", fileName, "w");
+
+        // cwipi_save_location("cwipiFoam");
+
+        // cwipi_close_location_file("cwipiFoam");
     };
 
     // Destructor

@@ -41,12 +41,54 @@ namespace Foam
         inline cwipiMeanFields(
             const fvMesh &mesh,
             const Foam::Time &runTime)
-            : UMean_(IOobject("UMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),     // Time-averaged velocity
-              rhoMean_(IOobject("rhoMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh), // Time-averaged density
-              LMean_(IOobject("LMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),     // Time-averaged Lamb vector
-              sMean_(IOobject("sMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),     // Time-averaged entropy
-              cMean_(IOobject("cMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh),     // Time-averaged speed of sound
-              TMean_(IOobject("TMean", runTime.timeName(), mesh, IOobject::MUST_READ, IOobject::AUTO_WRITE), mesh){};
+            : UMean_( // Time-averaged velocity
+                  IOobject(
+                      "UMean",
+                      runTime.timeName(),
+                      mesh,
+                      IOobject::MUST_READ,
+                      IOobject::AUTO_WRITE),
+                  mesh),
+              rhoMean_( // Time-averaged density
+                  IOobject(
+                      "rhoMean",
+                      runTime.timeName(),
+                      mesh,
+                      IOobject::MUST_READ,
+                      IOobject::AUTO_WRITE),
+                  mesh),
+              LMean_( // Time-averaged Lamb vector
+                  IOobject(
+                      "LMean",
+                      runTime.timeName(),
+                      mesh,
+                      IOobject::MUST_READ,
+                      IOobject::AUTO_WRITE),
+                  mesh),
+              sMean_( // Time-averaged entropy
+                  IOobject(
+                      "sMean",
+                      runTime.timeName(),
+                      mesh,
+                      IOobject::MUST_READ,
+                      IOobject::AUTO_WRITE),
+                  mesh),
+              cMean_( // Time-averaged speed of sound
+                  IOobject(
+                      "cMean",
+                      runTime.timeName(),
+                      mesh,
+                      IOobject::MUST_READ,
+                      IOobject::AUTO_WRITE),
+                  mesh),
+              TMean_( // Time-averaged temperature
+                  IOobject(
+                      "TMean",
+                      runTime.timeName(),
+                      mesh,
+                      IOobject::MUST_READ,
+                      IOobject::AUTO_WRITE),
+                  mesh){};
 
         // Default destructor
         inline ~cwipiMeanFields(){};
