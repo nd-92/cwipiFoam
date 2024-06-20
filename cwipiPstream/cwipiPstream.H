@@ -111,13 +111,13 @@ namespace Foam
                     dimensionSet(0, 2, -1, 0, 0),
                     0));
 
-// Scale it via volume ^ (2/3) * dt
+            // Scale it via volume ^ (2/3) * dt
             forAll(__mesh.cells(), i)
             {
                 DT[i] = pow(__mesh.V()[i], 2 / 3) * __runTime.deltaTValue();
             }
 
-// Multiply by a dimensionless scale factor
+            // Multiply by a dimensionless scale factor
             return DT * dimensionedScalar("zero", dimless, __runTime.controlDict().lookupOrDefault("smoothingScale", 1));
         };
 

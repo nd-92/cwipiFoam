@@ -95,7 +95,7 @@ void Foam::fixedRhoFvPatchScalarField::updateCoeffs()
     const fvPatchField<scalar> &pp =
         patch().lookupPatchField<volScalarField, scalar>(pName_);
 
-    operator==(psip *pp);
+    operator==(psip * pp);
 
     fixedValueFvPatchScalarField::updateCoeffs();
 }
