@@ -258,7 +258,7 @@ bool Foam::UPstream::init(int &argc, char **&argv, const bool needsThread)
         argc -= 2;
     }
 
-    cwipi_init(MPI_COMM_WORLD, "cwipiFoam", &localComm);
+    cwipi_init(MPI_COMM_WORLD, LOCAL_APPLICATION_NAME, &localComm);
     MPI_Comm_size(localComm, &numprocs);
     MPI_Comm_rank(localComm, &myRank);
 
@@ -469,7 +469,7 @@ void Foam::UPstream::shutdown(int errNo)
 void Foam::UPstream::exit(int errNo)
 {
     UPstream::shutdown(errNo);
-    cwipi_delete_coupling("cwipiFoam");
+    cwipi_delete_coupling(LOCAL_APPLICATION_NAME);
     cwipi_finalize();
     std::exit(errNo);
 }

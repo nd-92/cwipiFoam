@@ -39,7 +39,7 @@ namespace Foam
     public:
         // Default constructor
         inline cwipiSwitch(
-            const Foam::Time &runTime)
+            const Time &runTime)
             : isActive_(readBool(runTime.controlDict().lookup("cwipiSwitch")))
         {
             if (isActive())

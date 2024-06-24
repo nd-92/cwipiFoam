@@ -40,7 +40,7 @@ namespace Foam
         // Default constructor
         inline cwipiMeanFields(
             const fvMesh &mesh,
-            const Foam::Time &runTime)
+            const Time &runTime)
             : UMean_( // Time-averaged velocity
                   IOobject(
                       "UMean",

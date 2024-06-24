@@ -42,12 +42,16 @@ License
 
 namespace Foam
 {
+    // Define application names
+    constexpr const char *LOCAL_APPLICATION_NAME = "cwipiFoam";
+    constexpr const char *DISTANT_APPLICATION_NAME = "FOAM_APE";
+
     class cwipiPstream
     {
     public:
         // Default constructor
         cwipiPstream(
-            const Foam::Time &runTime,
+            const Time &runTime,
             const fvMesh &mesh,
             const psiThermo &thermo,
             const volVectorField &U);
@@ -75,7 +79,7 @@ namespace Foam
 
     private:
         // Return the names of the source fields
-        [[nodiscard]] inline const char *cwipiSourceFieldNames(const uint8_t dim)
+        [[nodiscard]] inline const char *cwipiSourceFieldNames(const size_t dim)
         {
             switch (dim)
             {
@@ -149,7 +153,7 @@ namespace Foam
             // Compute continuity equation source
             // F_p = (rhoMean / c_p) * (DMean/Dt(sPrime))
             // ddt(s - sMean) = ddt(s) since ddt(sMean) = 0
-            F_p_ = entropyDerivativeSwitch * ((baseFlow_.rhoMean() / thermo_.Cp()) * (fvc::ddt(fields_.s()) + (baseFlow_.UMean() & fvc::grad((fields_.s() - baseFlow_.sMean()))))) * sourceDamping_;
+            F_p_ = entropyDerivativeSwitch * (sqr(baseFlow_.cMean()) * (baseFlow_.rhoMean() / thermo_.Cp()) * (fvc::ddt(fields_.s()) + (baseFlow_.UMean() & fvc::grad((fields_.s() - baseFlow_.sMean()))))) * sourceDamping_;
 
             // Compute momentum equation source
             // F_u = (TPrime * grad(sMean)) - (sPrime * grad(TMean)) - LPrime;
@@ -200,7 +204,7 @@ namespace Foam
         int status;
 
         // Spatial dimension
-        const uint8_t dim_;
+        const size_t dim_;
         const bool isThreeDimensional_;
 
         // Parameters for coupling
@@ -229,12 +233,85 @@ namespace Foam
         const char *sourceFieldNames_;
 
         // Mesh info for cwipi
-        std::vector<scalar> pointCoords = std::vector<scalar>();
-        std::vector<int> connecIdx = std::vector<int>();
-        std::vector<int> connec = std::vector<int>();
+        std::vector<scalar> pointCoords_;
+        std::vector<int> connecIdx_;
+        std::vector<int> connec_;
+
+        std::vector<scalar> pointCoordsInitialise(const fvMesh &mesh) const
+        {
+            std::vector<scalar> pointCoords = std::vector<scalar>(3 * mesh.nPoints(), 0);
+            // Create mesh connectivity list
+            forAll(mesh.points(), i)
+            {
+                pointCoords[3 * i + 0] = mesh.points()[i].x();
+                pointCoords[3 * i + 1] = mesh.points()[i].y();
+                pointCoords[3 * i + 2] = mesh.points()[i].z();
+            }
+
+            return pointCoords;
+        }
+
+        std::vector<int> connecIdxInitialise(const fvMesh &mesh) const
+        {
+            std::vector<int> connecIdx = std::vector<int>(mesh.nCells() + 1, 0);
+
+            connecIdx[0] = 0;
+            forAll(mesh.cells(), i)
+            {
+                connecIdx[i + 1] = connecIdx[i] + 8;
+            }
+
+            return connecIdx;
+        };
+
+        std::vector<int> connecInitialise(const fvMesh &mesh) const
+        {
+            std::vector<int> connec = std::vector<int>(mesh.nCells() * 8, 0);
+
+            forAll(mesh.cells(), i)
+            {
+                forAll(mesh.cellShapes()[i], j)
+                {
+                    connec[8 * i + j] = mesh.cellShapes()[i][j] + 1;
+                }
+            }
+
+            return connec;
+        }
 
         // Cwipi source array
         std::vector<scalar> fieldsToSend_;
+
+        std::vector<scalar> fieldsToSendInitialise(
+            const fvMesh &mesh,
+            const pointScalarField &F_p,
+            const pointVectorField &F_U,
+            const size_t dim) const
+        {
+            std::vector<scalar> fieldsToSend = std::vector<scalar>((dim + 1) * mesh.nPoints(), 0);
+
+            if (dim == 3)
+            {
+                forAll(mesh.points(), i)
+                {
+                    fieldsToSend[(4 * i) + 0] = F_U[i].x();
+                    fieldsToSend[(4 * i) + 1] = F_U[i].y();
+                    fieldsToSend[(4 * i) + 2] = F_U[i].z();
+                    fieldsToSend[(4 * i) + 3] = F_p[i];
+                }
+            }
+            else
+            {
+                forAll(mesh.points(), i)
+                {
+                    fieldsToSend[(3 * i) + 0] = F_U[i].x();
+                    fieldsToSend[(3 * i) + 1] = F_U[i].y();
+                    fieldsToSend[(3 * i) + 2] = F_p[i];
+                }
+            }
+
+            return fieldsToSend;
+        }
 
         // Laplacian smoothing coefficient
         const volScalarField DT_;

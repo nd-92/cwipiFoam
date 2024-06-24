@@ -39,7 +39,7 @@ namespace Foam
 {
     // Constructor
     cwipiPstream::cwipiPstream(
-        const Foam::Time &runTime,
+        const Time &runTime,
         const fvMesh &mesh,
         const psiThermo &thermo,
         const volVectorField &U)
@@ -49,7 +49,7 @@ namespace Foam
           pInterp_(mesh),                                                                                                                                                                                                                                                                                                                          // Pointwise interpolation
           sendTag(0),                                                                                                                                                                                                                                                                                                                              // Set send tag to 0
           status(0),                                                                                                                                                                                                                                                                                                                               // Set status to 0
-          dim_(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim")))),                                                                                                                                                                                                                                                           // Get dimension
+          dim_(static_cast<size_t>(readInt(runTime.controlDict().lookup("cwipiDim")))),                                                                                                                                                                                                                                                            // Get dimension
           isThreeDimensional_(static_cast<bool>(readInt(runTime.controlDict().lookup("cwipiDim")) - 2)),                                                                                                                                                                                                                                           // Get switch for 3d
           lambVectorSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiLambVector")))),                                                                                                                                                                                                                                  // Cast lamb vector coefficient to scalar
           entropyGradientSwitch(static_cast<Foam::scalar>(readBool(runTime.controlDict().lookup("cwipiEntropy")))),                                                                                                                                                                                                                                // Cast entropy gradient coefficient to scalar
@@ -59,57 +59,58 @@ namespace Foam
           baseFlow_(cwipiMeanFields(mesh, runTime)),                                                                                                                                                                                                                                                                                               // Mean flow fields
           fields_(cwipiFields(mesh, runTime, U, thermo)),                                                                                                                                                                                                                                                                                          // Instantaneous flow fields
           sourceDamping_(IOobject("sourceDamping", runTime.timeName(), mesh, IOobject::READ_IF_PRESENT, IOobject::AUTO_WRITE), mesh, dimensionedScalar("one", dimless, 1)),                                                                                                                                                                        // Source damping coefficient
-          F_p_(IOobject("F_p", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), entropyDerivativeSwitch * ((baseFlow_.rhoMean() / thermo_.Cp()) * (fvc::ddt(fields_.s()) + (baseFlow_.UMean() & fvc::grad((fields_.s() - baseFlow_.sMean()))))) * sourceDamping_),                                                              // Continuity equation sources
+          F_p_(IOobject("F_p", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), entropyDerivativeSwitch * (sqr(baseFlow_.cMean()) * (baseFlow_.rhoMean() / thermo_.Cp()) * (fvc::ddt(fields_.s()) + (baseFlow_.UMean() & fvc::grad((fields_.s() - baseFlow_.sMean()))))) * sourceDamping_),                                     // Continuity equation sources
           F_u_(IOobject("F_u", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), ((entropyGradientSwitch * ((thermo_.T() - baseFlow_.TMean()) * fvc::grad(baseFlow_.sMean())) - ((fields_.s() - baseFlow_.sMean()) * fvc::grad(baseFlow_.TMean()))) - (lambVectorSwitch * (fields_.L() - baseFlow_.LMean()))) * sourceDamping_), // Momentum equation sources
           F_0_p_(pInterp_.interpolate(F_p_)),                                                                                                                                                                                                                                                                                                      // Pointwise interpolation of continuity equation sources
           F_0_u_(pInterp_.interpolate(F_u_)),                                                                                                                                                                                                                                                                                                      // Pointwise interpolation of momentum equation sources
-          sourceFieldNames_(cwipiSourceFieldNames(static_cast<uint8_t>(readInt(runTime.controlDict().lookup("cwipiDim"))))),
-          fieldsToSend_(std::vector<scalar>((dim_ + 1) * mesh_.nPoints(), 0)),
+          sourceFieldNames_(cwipiSourceFieldNames(static_cast<size_t>(readInt(runTime.controlDict().lookup("cwipiDim"))))),
+          pointCoords_(pointCoordsInitialise(mesh_)),
+          connecIdx_(connecIdxInitialise(mesh_)),
+          connec_(connecInitialise(mesh_)),
+          fieldsToSend_(fieldsToSendInitialise(mesh, F_0_p_, F_0_u_, dim_)),
           DT_(initialiseSmoothingCoefficient(mesh_, runTime_)),
           pressureSmoother_(IOobject("f_p", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedScalar("zero", F_p_.dimensions(), 0), fixedValueFvPatchScalarField::typeName),
           velocitySmoother_(IOobject("f_U", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedVector("zero", F_u_.dimensions(), vector(0, 0, 0)), fixedValueFvPatchScalarField::typeName)
     {
-        // Resize mesh vectors to fit
-        pointCoords.resize(3 * mesh_.nPoints());
-        connecIdx.resize(mesh_.nCells() + 1);
-        connec.resize(mesh_.nCells() * 8);
+        // // Resize mesh vectors to fit
+        // pointCoords_.resize(3 * mesh_.nPoints());
 
-        // Create mesh connectivity list
-        forAll(mesh_.points(), i)
-        {
-            pointCoords[3 * i + 0] = mesh_.points()[i].x();
-            pointCoords[3 * i + 1] = mesh_.points()[i].y();
-            pointCoords[3 * i + 2] = mesh_.points()[i].z();
-        }
-        connecIdx[0] = 0;
-        forAll(mesh_.cells(), i)
-        {
-            connecIdx[i + 1] = connecIdx[i] + 8;
-            forAll(mesh_.cellShapes()[i], j)
-            {
-                connec[8 * i + j] = mesh_.cellShapes()[i][j] + 1;
-            }
-        }
+        // // Create mesh connectivity list
+        // forAll(mesh_.points(), i)
+        // {
+        //     pointCoords_[3 * i + 0] = mesh_.points()[i].x();
+        //     pointCoords_[3 * i + 1] = mesh_.points()[i].y();
+        //     pointCoords_[3 * i + 2] = mesh_.points()[i].z();
+        // }
+        // connecIdx_[0] = 0;
+        // forAll(mesh_.cells(), i)
+        // {
+        //     connecIdx_[i + 1] = connecIdx_[i] + 8;
+        //     forAll(mesh_.cellShapes()[i], j)
+        //     {
+        //         connec_[8 * i + j] = mesh_.cellShapes()[i][j] + 1;
+        //     }
+        // }
 
-        if (isThreeDimensional_)
-        {
-            forAll(mesh_.points(), i)
-            {
-                fieldsToSend_[(4 * i) + 0] = F_0_u_[i].x();
-                fieldsToSend_[(4 * i) + 1] = F_0_u_[i].y();
-                fieldsToSend_[(4 * i) + 2] = F_0_u_[i].z();
-                fieldsToSend_[(4 * i) + 3] = F_0_p_[i];
-            }
-        }
-        else
-        {
-            forAll(mesh_.points(), i)
-            {
-                fieldsToSend_[(3 * i) + 0] = F_0_u_[i].x();
-                fieldsToSend_[(3 * i) + 1] = F_0_u_[i].y();
-                fieldsToSend_[(3 * i) + 2] = F_0_p_[i];
-            }
-        }
+        // if (isThreeDimensional_)
+        // {
+        //     forAll(mesh_.points(), i)
+        //     {
+        //         fieldsToSend_[(4 * i) + 0] = F_0_u_[i].x();
+        //         fieldsToSend_[(4 * i) + 1] = F_0_u_[i].y();
+        //         fieldsToSend_[(4 * i) + 2] = F_0_u_[i].z();
+        //         fieldsToSend_[(4 * i) + 3] = F_0_p_[i];
+        //     }
+        // }
+        // else
+        // {
+        //     forAll(mesh_.points(), i)
+        //     {
+        //         fieldsToSend_[(3 * i) + 0] = F_0_u_[i].x();
+        //         fieldsToSend_[(3 * i) + 1] = F_0_u_[i].y();
+        //         fieldsToSend_[(3 * i) + 2] = F_0_p_[i];
+        //     }
+        // }
 
         // Add local control parameters
         cwipi_add_local_int_control_parameter(
@@ -124,9 +125,9 @@ namespace Foam
 
         // Create coupling
         cwipi_create_coupling(
-            "cwipiFoam",
+            LOCAL_APPLICATION_NAME,
             CWIPI_COUPLING_PARALLEL_WITH_PARTITIONING,
-            "FOAM_APE",
+            DISTANT_APPLICATION_NAME,
             3,
             1,
             CWIPI_STATIC_MESH,
@@ -137,7 +138,7 @@ namespace Foam
 
         // Sync and dump
         cwipi_synchronize_control_parameter(
-            "FOAM_APE");
+            DISTANT_APPLICATION_NAME);
         if (static_cast<bool>(runTime.controlDict().lookupOrDefault("cwipiDumpProperties", false)))
         {
             cwipi_dump_application_properties();
@@ -145,33 +146,33 @@ namespace Foam
 
         // Get send tag
         sendTag = cwipi_get_distant_int_control_parameter(
-            "FOAM_APE",
+            DISTANT_APPLICATION_NAME,
             "receiveTag");
 
         // Define mesh
         cwipi_define_mesh(
-            "cwipiFoam",
+            LOCAL_APPLICATION_NAME,
             mesh_.nPoints(),
             mesh_.nCells(),
-            pointCoords.data(),
-            connecIdx.data(),
-            connec.data());
+            pointCoords_.data(),
+            connecIdx_.data(),
+            connec_.data());
 
         // Locate interpolation
         Info << "About to call cwipi_locate." << endl;
         Info << "This is a common point of failure due to a high oversampling rate defined in Nektar++." << endl;
         Info << "If the application crashes at this point, check the Oversample property of your coupling entry." << endl;
         cwipi_locate(
-            "cwipiFoam");
+            LOCAL_APPLICATION_NAME);
         Info << "Interpolation located successfully." << endl;
 
         // char *fileName = static_cast<char*>("cwipiLocationDict");
 
-        // cwipi_open_location_file("cwipiFoam", fileName, "w");
+        // cwipi_open_location_file(LOCAL_APPLICATION_NAME, fileName, "w");
 
-        // cwipi_save_location("cwipiFoam");
+        // cwipi_save_location(LOCAL_APPLICATION_NAME);
 
-        // cwipi_close_location_file("cwipiFoam");
+        // cwipi_close_location_file(LOCAL_APPLICATION_NAME);
     };
 
     // Destructor
@@ -189,7 +190,7 @@ namespace Foam
         {
             // Send data
             cwipi_issend(
-                "cwipiFoam",
+                LOCAL_APPLICATION_NAME,
                 "ex1",
                 sendTag,
                 dim_ + 1,
@@ -225,7 +226,7 @@ namespace Foam
         {
             // Wait
             cwipi_wait_issend(
-                "cwipiFoam",
+                LOCAL_APPLICATION_NAME,
                 status);
         }
 

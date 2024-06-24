@@ -40,7 +40,7 @@ namespace Foam
         // Default constructor
         inline cwipiFields(
             const fvMesh &mesh,
-            const Foam::Time &runTime,
+            const Time &runTime,
             const volVectorField &U,
             const psiThermo &thermo)
             : U_(U),
