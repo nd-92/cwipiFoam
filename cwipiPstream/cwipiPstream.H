@@ -159,7 +159,10 @@ namespace Foam
             // F_u = (TPrime * grad(sMean)) - (sPrime * grad(TMean)) - LPrime;
             F_u_ = ((entropyGradientSwitch * ((thermo_.T() - baseFlow_.TMean()) * fvc::grad(baseFlow_.sMean())) - ((fields_.s() - baseFlow_.sMean()) * fvc::grad(baseFlow_.TMean()))) - (lambVectorSwitch * (fields_.L() - baseFlow_.LMean()))) * sourceDamping_;
 
-            smoothenSources();
+            if (smoothenSourcesSwitch)
+            {
+                smoothenSources();
+            }
 
             // Pointwise interpolation of sources
             F_0_p_ = pInterp_.interpolate(pressureSmoother_);
@@ -317,6 +320,7 @@ namespace Foam
         const volScalarField DT_;
         volScalarField pressureSmoother_;
         volVectorField velocitySmoother_;
+        const bool smoothenSourcesSwitch;
     };
 
 }

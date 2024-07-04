@@ -62,9 +62,9 @@ namespace Foam
               mesh_(mesh),
               thermo_(thermo),
               runTime_(runTime),
-              rhoGradRef_(dimensionedScalar(
+              C_rhoGrad(dimensionedScalar(
                   "refVal",
-                  dimMass / (dimLength * dimLength * dimLength * dimLength),
+                  (dimLength * dimLength * dimLength * dimLength) / dimMass,
                   readScalar(mesh.solutionDict().subDict("freestreamProperties").lookup("rhoGrad")))),
               shockSensor_(
                   IOobject(
@@ -73,11 +73,11 @@ namespace Foam
                       mesh,
                       IOobject::NO_READ,
                       IOobject::NO_WRITE),
-                  mag(fvc::grad(thermo_.rho())) / rhoGradRef_),
+                  mag(fvc::grad(thermo_.rho())) * C_rhoGrad),
               USmall_(dimensionedScalar("USmall", dimLength / dimTime, SMALL)),
               cellScales_(cellScalesI(mesh))
         {
-            shockSensor_ = erf(erf(mag(fvc::grad(thermo_.rho()) & (U_ / (mag(U_) + USmall_))) / rhoGradRef_) + cellScales_);
+            shockSensor_ = erf(erf(mag(fvc::grad(thermo_.rho()) & (U_ / (mag(U_) + USmall_))) * C_rhoGrad) + cellScales_);
             shockSensor_ = shockSensor_ - min(shockSensor_);
             shockSensor_ = shockSensor_ / max(shockSensor_);
         };
@@ -88,7 +88,7 @@ namespace Foam
         // Update the shock sensor
         inline void update()
         {
-            shockSensor_ = erf(erf(mag(fvc::grad(thermo_.rho()) & (U_ / (mag(U_) + USmall_))) / rhoGradRef_) + cellScales_);
+            shockSensor_ = erf(erf(mag(fvc::grad(thermo_.rho()) & (U_ / (mag(U_) + USmall_))) * C_rhoGrad) + cellScales_);
             shockSensor_ = shockSensor_ - min(shockSensor_);
             shockSensor_ = shockSensor_ / max(shockSensor_);
         }
@@ -113,7 +113,7 @@ namespace Foam
         const Time &runTime_;
 
         // Density gradient clip value
-        const dimensionedScalar rhoGradRef_;
+        const dimensionedScalar C_rhoGrad;
 
         // Shock sensor
         volScalarField shockSensor_;
@@ -171,7 +171,7 @@ namespace Foam
                 dimless,
                 readScalar(mesh.solutionDict().subDict("freestreamProperties").lookup("cellDim")));
 
-            cellScales_ = erf(cellScales_ / cellScaleRef_);
+            cellScales_ = erf(cellScales_ * cellScaleRef_);
 
             return cellScales_;
         }

@@ -70,48 +70,9 @@ namespace Foam
           fieldsToSend_(fieldsToSendInitialise(mesh, F_0_p_, F_0_u_, dim_)),
           DT_(initialiseSmoothingCoefficient(mesh_, runTime_)),
           pressureSmoother_(IOobject("f_p", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedScalar("zero", F_p_.dimensions(), 0), fixedValueFvPatchScalarField::typeName),
-          velocitySmoother_(IOobject("f_U", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedVector("zero", F_u_.dimensions(), vector(0, 0, 0)), fixedValueFvPatchScalarField::typeName)
+          velocitySmoother_(IOobject("f_U", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedVector("zero", F_u_.dimensions(), vector(0, 0, 0)), fixedValueFvPatchScalarField::typeName),
+          smoothenSourcesSwitch(static_cast<bool>(runTime.controlDict().lookupOrDefault("smoothenSources", false)))
     {
-        // // Resize mesh vectors to fit
-        // pointCoords_.resize(3 * mesh_.nPoints());
-
-        // // Create mesh connectivity list
-        // forAll(mesh_.points(), i)
-        // {
-        //     pointCoords_[3 * i + 0] = mesh_.points()[i].x();
-        //     pointCoords_[3 * i + 1] = mesh_.points()[i].y();
-        //     pointCoords_[3 * i + 2] = mesh_.points()[i].z();
-        // }
-        // connecIdx_[0] = 0;
-        // forAll(mesh_.cells(), i)
-        // {
-        //     connecIdx_[i + 1] = connecIdx_[i] + 8;
-        //     forAll(mesh_.cellShapes()[i], j)
-        //     {
-        //         connec_[8 * i + j] = mesh_.cellShapes()[i][j] + 1;
-        //     }
-        // }
-
-        // if (isThreeDimensional_)
-        // {
-        //     forAll(mesh_.points(), i)
-        //     {
-        //         fieldsToSend_[(4 * i) + 0] = F_0_u_[i].x();
-        //         fieldsToSend_[(4 * i) + 1] = F_0_u_[i].y();
-        //         fieldsToSend_[(4 * i) + 2] = F_0_u_[i].z();
-        //         fieldsToSend_[(4 * i) + 3] = F_0_p_[i];
-        //     }
-        // }
-        // else
-        // {
-        //     forAll(mesh_.points(), i)
-        //     {
-        //         fieldsToSend_[(3 * i) + 0] = F_0_u_[i].x();
-        //         fieldsToSend_[(3 * i) + 1] = F_0_u_[i].y();
-        //         fieldsToSend_[(3 * i) + 2] = F_0_p_[i];
-        //     }
-        // }
-
         // Add local control parameters
         cwipi_add_local_int_control_parameter(
             "nSendVars",
@@ -165,14 +126,6 @@ namespace Foam
         cwipi_locate(
             LOCAL_APPLICATION_NAME);
         Info << "Interpolation located successfully." << endl;
-
-        // char *fileName = static_cast<char*>("cwipiLocationDict");
-
-        // cwipi_open_location_file(LOCAL_APPLICATION_NAME, fileName, "w");
-
-        // cwipi_save_location(LOCAL_APPLICATION_NAME);
-
-        // cwipi_close_location_file(LOCAL_APPLICATION_NAME);
     };
 
     // Destructor
