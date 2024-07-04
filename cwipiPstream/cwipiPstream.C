@@ -160,11 +160,17 @@ namespace Foam
                 // Info << "Exchange Ok" << endl;
                 break;
             case CWIPI_EXCHANGE_BAD_RECEIVING:
-                throw std::runtime_error("Error: Bad receive status.");
+                std::cout << std::endl;
+                std::cout << "Error: Bad receive status." << std::endl;
+                std::exit(1);
+                // throw std::runtime_error("Error: Bad receive status.");
                 // Info << "Bad receiving" << endl;
                 break;
             default:
-                throw std::runtime_error("Error: Undefined receive status.");
+                std::cout << std::endl;
+                std::cout << "Error: Undefined receive status." << std::endl;
+                std::exit(1);
+                // throw std::runtime_error("Error: Undefined receive status.");
                 // Info << "Error: bad exchange status" << endl;
                 break;
             }
