@@ -49,17 +49,17 @@ for (size_t i = 0; i < 4; i++)
     thermo.p().ref() = rho() / thermo.psi();
     thermo.p().correctBoundaryConditions();
     // rho.boundaryFieldRef() == thermo.psi().boundaryField() * thermo.p().boundaryField();
-
-    // Apply damping
-    thermo.T() = (T_inf * acousticDamping) + (thermo.T() * noDamping);
-    thermo.T().correctBoundaryConditions();
-    thermo.p() = (p_inf * acousticDamping) + (thermo.p() * noDamping);
-    thermo.p().correctBoundaryConditions();
-    rho = (rho_inf * acousticDamping) + (rho * noDamping);
-    rho.correctBoundaryConditions();
-    U = (U_inf * acousticDamping) + (U * noDamping);
-    U.correctBoundaryConditions();
 }
+
+// Apply damping
+thermo.T() = (T_inf * acousticDamping) + (thermo.T() * noDamping);
+thermo.T().correctBoundaryConditions();
+thermo.p() = (p_inf * acousticDamping) + (thermo.p() * noDamping);
+thermo.p().correctBoundaryConditions();
+rho = (rho_inf * acousticDamping) + (rho * noDamping);
+rho.correctBoundaryConditions();
+U = (U_inf * acousticDamping) + (U * noDamping);
+U.correctBoundaryConditions();
 
 // Update turbulence fields
 turbulence->correct();
