@@ -24,18 +24,18 @@ for (size_t i = 0; i < 4; i++)
             + fvc::div(turbulence->devRhoReff()) //
         );                                       //
 
-    solve                                                        //
-        (                                                        //
-            1.0 / beta[i] * fvm::ddt(rhoE)                       //
-            + fvc::div(dbnsFlux.rhoEFlux())                      //
-            + fvc::div(turbulence->devRhoReff() & rhoU / rho)    //
-            - fvc::laplacian(turbulence->alphaEff(), rhoE / rho) //
-        );                                                       //
-
     // Compute U
     U = rhoU / rho;
     U.correctBoundaryConditions();
     rhoU.boundaryFieldRef() == rho.boundaryField() * U.boundaryField();
+
+    solve                                               //
+        (                                               //
+            1.0 / beta[i] * fvm::ddt(rhoE)              //
+            + fvc::div(dbnsFlux.rhoEFlux())             //
+            + fvc::div(turbulence->devRhoReff() & U)    //
+            - fvc::laplacian(turbulence->alphaEff(), e) //
+        );                                              //
 
     // Calculate internal energy
     e = ((rhoE / rho) - (0.5 * magSqr(U)));
@@ -48,7 +48,7 @@ for (size_t i = 0; i < 4; i++)
     // Compute p from rho
     thermo.p().ref() = rho() / thermo.psi();
     thermo.p().correctBoundaryConditions();
-    // rho.boundaryFieldRef() == thermo.psi().boundaryField() * thermo.p().boundaryField();
+    rho.boundaryFieldRef() == thermo.psi().boundaryField() * thermo.p().boundaryField();
 }
 
 // Apply damping
