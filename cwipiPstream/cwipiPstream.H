@@ -162,11 +162,15 @@ namespace Foam
             if (smoothenSourcesSwitch)
             {
                 smoothenSources();
+                F_0_p_ = pInterp_.interpolate(pressureSmoother_);
+                F_0_u_ = pInterp_.interpolate(velocitySmoother_);
             }
-
-            // Pointwise interpolation of sources
-            F_0_p_ = pInterp_.interpolate(pressureSmoother_);
-            F_0_u_ = pInterp_.interpolate(velocitySmoother_);
+            else
+            {
+                // Pointwise interpolation of sources
+                F_0_p_ = pInterp_.interpolate(F_p_);
+                F_0_u_ = pInterp_.interpolate(F_u_);
+            }
 
             // Assign fieldsToSend_ for either 2D or 3D case
             if (isThreeDimensional_)
