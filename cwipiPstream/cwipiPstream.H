@@ -157,7 +157,7 @@ namespace Foam
 
             // Compute momentum equation source
             // F_u = (TPrime * grad(sMean)) - (sPrime * grad(TMean)) - LPrime;
-            F_u_ = ((entropyGradientSwitch * ((thermo_.T() - baseFlow_.TMean()) * fvc::grad(baseFlow_.sMean())) - ((fields_.s() - baseFlow_.sMean()) * fvc::grad(baseFlow_.TMean()))) - (lambVectorSwitch * (fields_.L() - baseFlow_.LMean()))) * sourceDamping_;
+            F_u_ = ((entropyGradientSwitch * (((thermo_.T() - baseFlow_.TMean()) * fvc::grad(baseFlow_.sMean())) - ((fields_.s() - baseFlow_.sMean()) * fvc::grad(baseFlow_.TMean())))) - (lambVectorSwitch * (fields_.L() - baseFlow_.LMean()))) * sourceDamping_;
 
             if (smoothenSourcesSwitch)
             {
