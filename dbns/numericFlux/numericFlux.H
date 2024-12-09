@@ -191,10 +191,10 @@ namespace Foam
                   rhoFlux_ * fvc::interpolate(thermo.Cv() * T + 0.5 * magSqr(U))),
               gradP(fvc::grad(p)),
               gradU(fvc::grad(U)),
-              gradT(fvc::grad(T)){};
+              gradT(fvc::grad(T)) {};
 
         //- Destructor
-        inline virtual ~numericFlux(){};
+        inline virtual ~numericFlux() {};
 
         // Member Functions
 

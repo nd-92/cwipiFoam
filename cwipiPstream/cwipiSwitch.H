@@ -53,7 +53,7 @@ namespace Foam
         };
 
         // Default destructor
-        inline ~cwipiSwitch(){};
+        inline ~cwipiSwitch() {};
 
         // Return access to switch
         inline constexpr const bool &isActive() const

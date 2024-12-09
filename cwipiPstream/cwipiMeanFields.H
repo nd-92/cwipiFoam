@@ -73,9 +73,9 @@ namespace Foam
                       IOobject::MUST_READ,
                       IOobject::AUTO_WRITE),
                   mesh),
-              cMean_( // Time-averaged speed of sound
+              cSqMean_( // Time-averaged square of the speed of sound
                   IOobject(
-                      "cMean",
+                      "cSqMean",
                       runTime.timeName(),
                       mesh,
                       IOobject::MUST_READ,
@@ -88,10 +88,10 @@ namespace Foam
                       mesh,
                       IOobject::MUST_READ,
                       IOobject::AUTO_WRITE),
-                  mesh){};
+                  mesh) {};
 
         // Default destructor
-        inline ~cwipiMeanFields(){};
+        inline ~cwipiMeanFields() {};
 
         // Access to speed of sound by reference
         inline volVectorField const &UMean() const
@@ -118,9 +118,9 @@ namespace Foam
         };
 
         // Access to speed of sound by reference
-        inline volScalarField const &cMean() const
+        inline volScalarField const &cSqMean() const
         {
-            return cMean_;
+            return cSqMean_;
         };
 
         // Access to speed of sound by reference
@@ -143,7 +143,7 @@ namespace Foam
         const volScalarField sMean_;
 
         // Time-averaged speed of sound
-        const volScalarField cMean_;
+        const volScalarField cSqMean_;
 
         // Time-averaged temperature
         const volScalarField TMean_;

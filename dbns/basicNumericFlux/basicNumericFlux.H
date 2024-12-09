@@ -69,10 +69,10 @@ namespace Foam
     public:
         // Constructor
         inline basicNumericFlux(const fvMesh &mesh)
-            : mesh_(mesh){};
+            : mesh_(mesh) {};
 
         // Destructor
-        inline virtual ~basicNumericFlux(){};
+        inline virtual ~basicNumericFlux() {};
 
         //- Runtime type information
         inline TypeName("basicNumericFlux");

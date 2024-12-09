@@ -43,8 +43,8 @@ namespace Foam
             const Time &runTime,
             const volVectorField &U,
             const psiThermo &thermo)
-            : U_(U),
-              thermo_(thermo),
+            : U_(U),                                                                                                                                                                              //
+              thermo_(thermo),                                                                                                                                                                    //
               L_(                                                                                                                                                                                 //
                   IOobject(                                                                                                                                                                       //
                       "L",                                                                                                                                                                        //
@@ -61,20 +61,20 @@ namespace Foam
                       IOobject::NO_READ,                                                                                                                                                          //
                       IOobject::NO_WRITE),                                                                                                                                                        //
                   (thermo_.Cp() * log(thermo_.T() / Foam::constant::standard::Tstd)) - ((Foam::constant::physicoChemical::R / thermo_.W()) * log(thermo_.p() / Foam::constant::standard::Pstd))), //
-              c_(                                                                                                                                                                                 //
+              cSq_(                                                                                                                                                                               //
                   IOobject(                                                                                                                                                                       //
-                      "c",                                                                                                                                                                        //
+                      "cSq",                                                                                                                                                                      //
                       runTime.timeName(),                                                                                                                                                         //
                       mesh,                                                                                                                                                                       //
                       IOobject::NO_READ,                                                                                                                                                          //
                       IOobject::NO_WRITE),                                                                                                                                                        //
-                  Foam::sqrt(thermo_.gamma() * thermo_.p() / thermo_.rho()))
+                  thermo_.gamma() * thermo_.p() / thermo_.rho())                                                                                                                                  //
         {
             Info << "CWIPI source fields allocated." << endl;
         };
 
         // Default destructor
-        inline ~cwipiFields(){};
+        inline ~cwipiFields() {};
 
         // Update Lamb vector, entropy and speed of sound
         inline void update()
@@ -89,8 +89,7 @@ namespace Foam
                   log(thermo_.p() / Foam::constant::standard::Pstd));  //
 
             // Update speed of sound
-            c_ = Foam::sqrt(thermo_.gamma() * thermo_.p() / thermo_.rho());
-            // c_ = sqrt(thermo_.Cp() / thermo_.Cv() / thermo_.psi());
+            cSq_ = thermo_.gamma() * thermo_.p() / thermo_.rho();
         };
 
         // Access to Lamb vector by reference
@@ -106,9 +105,9 @@ namespace Foam
         };
 
         // Access to speed of sound by reference
-        inline volScalarField const &c() const
+        inline volScalarField const &cSq() const
         {
-            return c_;
+            return cSq_;
         };
 
     private:
@@ -124,8 +123,8 @@ namespace Foam
         // Entropy
         volScalarField s_;
 
-        // Speed of sound
-        volScalarField c_;
+        // Square of the speed of sound
+        volScalarField cSq_;
     };
 
 }

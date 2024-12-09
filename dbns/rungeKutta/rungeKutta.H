@@ -54,7 +54,7 @@ namespace Foam
     {
     public:
         // Constructor
-        constexpr rungeKutta(){};
+        constexpr rungeKutta() {};
 
         // Destructor
         // constexpr ~rungeKutta(){};

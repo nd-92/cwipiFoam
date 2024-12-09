@@ -153,7 +153,7 @@ namespace Foam
             // Compute continuity equation source
             // F_p = (rhoMean / c_p) * (DMean/Dt(sPrime))
             // ddt(s - sMean) = ddt(s) since ddt(sMean) = 0
-            F_p_ = entropyDerivativeSwitch * (sqr(baseFlow_.cMean()) * (baseFlow_.rhoMean() / thermo_.Cp()) * (fvc::ddt(fields_.s()) + (baseFlow_.UMean() & fvc::grad((fields_.s() - baseFlow_.sMean()))))) * sourceDamping_;
+            F_p_ = entropyDerivativeSwitch * (baseFlow_.cSqMean() * (baseFlow_.rhoMean() / thermo_.Cp()) * (fvc::ddt(fields_.s()) + (baseFlow_.UMean() & fvc::grad((fields_.s() - baseFlow_.sMean()))))) * sourceDamping_;
 
             // Compute momentum equation source
             // F_u = (TPrime * grad(sMean)) - (sPrime * grad(TMean)) - LPrime;

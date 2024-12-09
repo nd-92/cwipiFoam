@@ -83,7 +83,7 @@ namespace Foam
         };
 
         // Destructor
-        inline ~shockSensor(){};
+        inline ~shockSensor() {};
 
         // Update the shock sensor
         inline void update()

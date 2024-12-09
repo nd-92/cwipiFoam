@@ -59,7 +59,7 @@ namespace Foam
           baseFlow_(cwipiMeanFields(mesh, runTime)),                                                                                                                                                                                                                                                                                               // Mean flow fields
           fields_(cwipiFields(mesh, runTime, U, thermo)),                                                                                                                                                                                                                                                                                          // Instantaneous flow fields
           sourceDamping_(IOobject("sourceDamping", runTime.timeName(), mesh, IOobject::READ_IF_PRESENT, IOobject::AUTO_WRITE), mesh, dimensionedScalar("one", dimless, 1)),                                                                                                                                                                        // Source damping coefficient
-          F_p_(IOobject("F_p", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), entropyDerivativeSwitch * (sqr(baseFlow_.cMean()) * (baseFlow_.rhoMean() / thermo_.Cp()) * (fvc::ddt(fields_.s()) + (baseFlow_.UMean() & fvc::grad((fields_.s() - baseFlow_.sMean()))))) * sourceDamping_),                                     // Continuity equation sources
+          F_p_(IOobject("F_p", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), entropyDerivativeSwitch * (baseFlow_.cSqMean() * (baseFlow_.rhoMean() / thermo_.Cp()) * (fvc::ddt(fields_.s()) + (baseFlow_.UMean() & fvc::grad((fields_.s() - baseFlow_.sMean()))))) * sourceDamping_),                                        // Continuity equation sources
           F_u_(IOobject("F_u", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::AUTO_WRITE), ((entropyGradientSwitch * ((thermo_.T() - baseFlow_.TMean()) * fvc::grad(baseFlow_.sMean())) - ((fields_.s() - baseFlow_.sMean()) * fvc::grad(baseFlow_.TMean()))) - (lambVectorSwitch * (fields_.L() - baseFlow_.LMean()))) * sourceDamping_), // Momentum equation sources
           F_0_p_(pInterp_.interpolate(F_p_)),                                                                                                                                                                                                                                                                                                      // Pointwise interpolation of continuity equation sources
           F_0_u_(pInterp_.interpolate(F_u_)),                                                                                                                                                                                                                                                                                                      // Pointwise interpolation of momentum equation sources
@@ -74,62 +74,36 @@ namespace Foam
           smoothenSourcesSwitch(static_cast<bool>(runTime.controlDict().lookupOrDefault("smoothenSources", false)))
     {
         // Add local control parameters
-        cwipi_add_local_int_control_parameter(
-            "nSendVars",
-            dim_ + 1);
-        cwipi_add_local_string_control_parameter(
-            "sendFieldNames",
-            sourceFieldNames_);
-        cwipi_add_local_int_control_parameter(
-            "receiveTag",
-            sendTag);
+        cwipi_add_local_int_control_parameter("nSendVars", dim_ + 1);
+        cwipi_add_local_string_control_parameter("sendFieldNames", sourceFieldNames_);
+        cwipi_add_local_int_control_parameter("receiveTag", sendTag);
 
         // Create coupling
-        cwipi_create_coupling(
-            LOCAL_APPLICATION_NAME,
-            CWIPI_COUPLING_PARALLEL_WITH_PARTITIONING,
-            DISTANT_APPLICATION_NAME,
-            3,
-            1,
-            CWIPI_STATIC_MESH,
-            CWIPI_SOLVER_CELL_VERTEX,
-            0,
-            "EnSight Gold",
-            "text");
+        cwipi_create_coupling(LOCAL_APPLICATION_NAME, CWIPI_COUPLING_PARALLEL_WITH_PARTITIONING, DISTANT_APPLICATION_NAME, 3, 1, CWIPI_STATIC_MESH, CWIPI_SOLVER_CELL_VERTEX, 0, "EnSight Gold", "text");
 
         // Sync and dump
-        cwipi_synchronize_control_parameter(
-            DISTANT_APPLICATION_NAME);
+        cwipi_synchronize_control_parameter(DISTANT_APPLICATION_NAME);
         if (static_cast<bool>(runTime.controlDict().lookupOrDefault("cwipiDumpProperties", false)))
         {
             cwipi_dump_application_properties();
         }
 
         // Get send tag
-        sendTag = cwipi_get_distant_int_control_parameter(
-            DISTANT_APPLICATION_NAME,
-            "receiveTag");
+        sendTag = cwipi_get_distant_int_control_parameter(DISTANT_APPLICATION_NAME, "receiveTag");
 
         // Define mesh
-        cwipi_define_mesh(
-            LOCAL_APPLICATION_NAME,
-            mesh_.nPoints(),
-            mesh_.nCells(),
-            pointCoords_.data(),
-            connecIdx_.data(),
-            connec_.data());
+        cwipi_define_mesh(LOCAL_APPLICATION_NAME, mesh_.nPoints(), mesh_.nCells(), pointCoords_.data(), connecIdx_.data(), connec_.data());
 
         // Locate interpolation
         Info << "About to call cwipi_locate." << endl;
         Info << "This is a common point of failure due to a high oversampling rate defined in Nektar++." << endl;
         Info << "If the application crashes at this point, check the Oversample property of your coupling entry." << endl;
-        cwipi_locate(
-            LOCAL_APPLICATION_NAME);
+        cwipi_locate(LOCAL_APPLICATION_NAME);
         Info << "Interpolation located successfully." << endl;
     };
 
     // Destructor
-    cwipiPstream::~cwipiPstream(){};
+    cwipiPstream::~cwipiPstream() {};
 
     // Send fields
     void cwipiPstream::send()
@@ -142,37 +116,29 @@ namespace Foam
         if (sendNow())
         {
             // Send data
-            cwipi_issend(
-                LOCAL_APPLICATION_NAME,
-                "ex1",
-                sendTag,
-                dim_ + 1,
-                1,
-                0,
-                sourceFieldNames_,
-                fieldsToSend_.data(),
-                &status);
+            cwipi_issend(LOCAL_APPLICATION_NAME, "ex1", sendTag, dim_ + 1, 1, 0, sourceFieldNames_, fieldsToSend_.data(), &status);
 
             // Handle exchange status
             switch (status)
             {
             case CWIPI_EXCHANGE_OK:
-                // Info << "Exchange Ok" << endl;
+            {
                 break;
+            }
             case CWIPI_EXCHANGE_BAD_RECEIVING:
+            {
                 std::cout << std::endl;
                 std::cout << "Error: Bad receive status." << std::endl;
                 std::exit(1);
-                // throw std::runtime_error("Error: Bad receive status.");
-                // Info << "Bad receiving" << endl;
                 break;
+            }
             default:
+            {
                 std::cout << std::endl;
                 std::cout << "Error: Undefined receive status." << std::endl;
                 std::exit(1);
-                // throw std::runtime_error("Error: Undefined receive status.");
-                // Info << "Error: bad exchange status" << endl;
                 break;
+            }
             }
         }
     };
@@ -184,9 +150,7 @@ namespace Foam
         if (sendNow())
         {
             // Wait
-            cwipi_wait_issend(
-                LOCAL_APPLICATION_NAME,
-                status);
+            cwipi_wait_issend(LOCAL_APPLICATION_NAME, status);
         }
 
         // Use modulo operator and increment by 1, faster

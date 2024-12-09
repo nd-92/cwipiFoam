@@ -75,7 +75,7 @@ namespace Foam
         };
 
         // Destructor
-        inline ~acousticCourantNo(){};
+        inline ~acousticCourantNo() {};
 
         // Calculate and print acoustic Courant number
         inline void calculate()
