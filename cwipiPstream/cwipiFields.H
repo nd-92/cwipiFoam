@@ -105,6 +105,12 @@ namespace Foam
         };
 
         // Access to speed of sound by reference
+        inline volScalarField const &c() const
+        {
+            return Foam::sqrt(cSq_);
+        };
+
+        // Access to speed of sound by reference
         inline volScalarField const &cSq() const
         {
             return cSq_;

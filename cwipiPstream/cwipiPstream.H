@@ -71,6 +71,12 @@ namespace Foam
             return fields_.c();
         }
 
+        // Public access to speed of sound
+        inline volScalarField const &cSq() const
+        {
+            return fields_.cSq();
+        }
+
         // Evaluate send condition
         [[nodiscard]] inline constexpr const Foam::Switch sendNow() const
         {
