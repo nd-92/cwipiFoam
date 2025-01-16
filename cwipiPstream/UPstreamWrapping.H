@@ -6,7 +6,7 @@
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
     Copyright (C) 2012-2016 OpenFOAM Foundation
-    Copyright (C) 2022 OpenCFD Ltd.
+    Copyright (C) 2022-2023 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -24,12 +24,6 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Namespace
-    Foam::PstreamDetail
-
-Description
-    Some implementation details for Pstream and/or MPI.
-
 InNamespace
     Foam::PstreamDetail
 
@@ -37,7 +31,7 @@ Description
     Functions to wrap MPI_Bcast, MPI_Allreduce, MPI_Iallreduce etc.
 
 SourceFiles
-    UPstreamWrappingTemplates.C
+    UPstreamWrapping.txx
 
 \*---------------------------------------------------------------------------*/
 
@@ -45,137 +39,221 @@ SourceFiles
 #define Foam_UPstreamWrapping_H
 
 #include "UPstream.H"
+
+// Include MPI without any C++ bindings
+#ifndef MPICH_SKIP_MPICXX
+#define MPICH_SKIP_MPICXX
+#endif
+#ifndef OMPI_SKIP_MPICXX
+#define OMPI_SKIP_MPICXX
+#endif
 #include <mpi.h>
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    namespace PstreamDetail
+namespace PstreamDetail
+{
+
+// Helper for casting to MPI_Request
+struct Request
+{
+    // To pointer
+    template<typename Type = MPI_Request>
+    static typename std::enable_if<std::is_pointer<Type>::value, Type>::type
+    get(const UPstream::Request& req) noexcept
     {
+        return reinterpret_cast<Type>(req.value());
+    }
 
-        // MPI_Bcast, using root=0
-        template <class Type>
-        void broadcast0(
-            Type *values,
-            int count,
-            MPI_Datatype datatype,
-            const label comm);
+    // To integer
+    template<typename Type = MPI_Request>
+    static typename std::enable_if<std::is_integral<Type>::value, Type>::type
+    get(const UPstream::Request& req) noexcept
+    {
+        return static_cast<Type>(req.value());
+    }
+};
 
-        // MPI_Reduce, using root=0
-        template <class Type>
-        void reduce0(
-            Type *values,
-            int count,
-            MPI_Datatype datatype,
-            MPI_Op optype,
-            const label comm);
 
-        // MPI_Allreduce or MPI_Iallreduce
-        template <class Type>
-        void allReduce(
-            Type *values,
-            int count,
-            MPI_Datatype datatype,
-            MPI_Op optype,
-            const label comm,          // Communicator
-            label *requestID = nullptr // Non-null for MPI_Iallreduce
-        );
+// MPI_Bcast, using root=0
+template<class Type>
+void broadcast0
+(
+    Type* values,
+    int count,
+    MPI_Datatype datatype,
+    const label comm
+);
 
-        // MPI_Alltoall or MPI_Ialltoall with one element per rank
-        template <class Type>
-        void allToAll(
-            const UList<Type> &sendData,
-            UList<Type> &recvData,
-            MPI_Datatype datatype,
-            const label comm,          // Communicator
-            label *requestID = nullptr // Non-null for MPI_Ialltoall
-        );
+// MPI_Reduce, using root=0
+template<class Type>
+void reduce0
+(
+    Type* values,
+    int count,
+    MPI_Datatype datatype,
+    MPI_Op optype,
+    const label comm
+);
 
-        // MPI_Alltoallv or MPI_Ialltoallv
-        template <class Type>
-        void allToAllv(
-            const Type *sendData,
-            const UList<int> &sendCounts,
-            const UList<int> &sendOffsets,
+// MPI_Allreduce or MPI_Iallreduce
+template<class Type>
+void allReduce
+(
+    Type* values,
+    int count,
+    MPI_Datatype datatype,
+    MPI_Op optype,
+    const label comm,                   // Communicator
+    UPstream::Request* req = nullptr,   // Non-null for non-blocking
+    label* requestID = nullptr          // (alternative to UPstream::Request)
+);
 
-            Type *recvData,
-            const UList<int> &recvCounts,
-            const UList<int> &recvOffsets,
 
-            MPI_Datatype datatype,
-            const label comm,          // Communicator
-            label *requestID = nullptr // Non-null for MPI_Ialltoallv
-        );
+// MPI_Alltoall or MPI_Ialltoall with one element per rank
+template<class Type>
+void allToAll
+(
+    const UList<Type>& sendData,
+    UList<Type>& recvData,
+    MPI_Datatype datatype,
+    const label comm,                   // Communicator
+    UPstream::Request* req = nullptr,   // Non-null for non-blocking
+    label* requestID = nullptr          // (alternative to UPstream::Request)
+);
 
-        // MPI_Gather or MPI_Igather
-        template <class Type>
-        void gather(
-            const Type *sendData,
-            int sendCount,
 
-            Type *recvData, // Ignored on non-root rank
-            int recvCount,  // Ignored on non-root rank
+// MPI_Alltoallv or MPI_Ialltoallv
+template<class Type>
+void allToAllv
+(
+    const Type* sendData,
+    const UList<int>& sendCounts,
+    const UList<int>& sendOffsets,
 
-            MPI_Datatype datatype,     // The send/recv data type
-            const label comm,          // Communicator
-            label *requestID = nullptr // Non-null for MPI_Igather
-        );
+    Type* recvData,
+    const UList<int>& recvCounts,
+    const UList<int>& recvOffsets,
 
-        // MPI_Scatter or MPI_Iscatter
-        template <class Type>
-        void scatter(
-            const Type *sendData, // Ignored on non-root rank
-            int sendCount,        // Ignored on non-root rank
+    MPI_Datatype datatype,
+    const label comm,                   // Communicator
+    UPstream::Request* req = nullptr,   // Non-null for non-blocking
+    label* requestID = nullptr          // (alternative to UPstream::Request)
+);
 
-            Type *recvData,
-            int recvCount,
 
-            MPI_Datatype datatype,     // The send/recv data type
-            const label comm,          // Communicator
-            label *requestID = nullptr // Non-null for MPI_Iscatter
-        );
+// Non-blocking consensual integer (size) exchange
+template<class Type>
+void allToAllConsensus
+(
+    const UList<Type>& sendData,
+    UList<Type>& recvData,
+    MPI_Datatype datatype,
+    const int tag,                      // Message tag
+    const label comm                    // Communicator
+);
 
-        // MPI_Gatherv or MPI_Igatherv
-        template <class Type>
-        void gatherv(
-            const Type *sendData,
-            int sendCount, // Ignored on master if recvCounts[0] == 0
 
-            Type *recvData,                // Ignored on non-root rank
-            const UList<int> &recvCounts,  // Ignored on non-root rank
-            const UList<int> &recvOffsets, // Ignored on non-root rank
+// Non-blocking consensual integer (size) exchange
+template<class Type>
+void allToAllConsensus
+(
+    const Map<Type>& sendData,
+    Map<Type>& recvData,
+    MPI_Datatype datatype,
+    const int tag,                      // Message tag
+    const label comm                    // Communicator
+);
 
-            MPI_Datatype datatype,     // The send/recv data type
-            const label comm,          // Communicator
-            label *requestID = nullptr // Non-null for MPI_Igatherv
-        );
 
-        // MPI_Scatterv or MPI_Iscatterv
-        template <class Type>
-        void scatterv(
-            const Type *sendData,          // Ignored on non-root rank
-            const UList<int> &sendCounts,  // Ignored on non-root rank
-            const UList<int> &sendOffsets, // Ignored on non-root rank
+// MPI_Gather or MPI_Igather
+template<class Type>
+void gather
+(
+    const Type* sendData,   // Local send value
+    Type* recvData,         // On master: recv buffer. Ignored elsewhere
+    int count,              // Per rank send/recv count. Globally consistent!
+    MPI_Datatype datatype,              // The send/recv data type
+    const label comm,                   // Communicator
+    UPstream::Request* req = nullptr,   // Non-null for non-blocking
+    label* requestID = nullptr          // (alternative to UPstream::Request)
+);
 
-            Type *recvData,
-            int recvCount,
 
-            MPI_Datatype datatype,     // The send/recv data type
-            const label comm,          // Communicator
-            label *requestID = nullptr // Non-null for MPI_Igatherv
-        );
+// MPI_Scatter or MPI_Iscatter
+template<class Type>
+void scatter
+(
+    const Type* sendData,   // On master: send buffer. Ignored elsewhere
+    Type* recvData,         // Local recv value
+    int count,              // Per rank send/recv count. Globally consistent!
+    MPI_Datatype datatype,              // The send/recv data type
+    const label comm,                   // Communicator
+    UPstream::Request* req = nullptr,   // Non-null for non-blocking
+    label* requestID = nullptr          // (alternative to UPstream::Request)
+);
 
-        // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-    } // End namespace PstreamDetail
+// MPI_Gatherv or MPI_Igatherv
+template<class Type>
+void gatherv
+(
+    const Type* sendData,
+    int sendCount,              // Ignored on master if recvCounts[0] == 0
+
+    Type* recvData,                     // Ignored on non-root rank
+    const UList<int>& recvCounts,       // Ignored on non-root rank
+    const UList<int>& recvOffsets,      // Ignored on non-root rank
+
+    MPI_Datatype datatype,              // The send/recv data type
+    const label comm,                   // Communicator
+    UPstream::Request* req = nullptr,   // Non-null for non-blocking
+    label* requestID = nullptr          // (alternative to UPstream::Request)
+);
+
+
+// MPI_Scatterv or MPI_Iscatterv
+template<class Type>
+void scatterv
+(
+    const Type* sendData,               // Ignored on non-root rank
+    const UList<int>& sendCounts,       // Ignored on non-root rank
+    const UList<int>& sendOffsets,      // Ignored on non-root rank
+
+    Type* recvData,
+    int recvCount,
+
+    MPI_Datatype datatype,              // The send/recv data type
+    const label comm,                   // Communicator
+    UPstream::Request* req = nullptr,   // Non-null for non-blocking
+    label* requestID = nullptr          // (alternative to UPstream::Request)
+);
+
+
+// MPI_Allgather or MPI_Iallgather
+template<class Type>
+void allGather
+(
+    Type* allData,                      // The send/recv data
+    int count,                          // The send/recv count per element
+
+    MPI_Datatype datatype,              // The send/recv data type
+    const label comm,                   // Communicator
+    UPstream::Request* req = nullptr,   // Non-null for non-blocking
+    label* requestID = nullptr          // (alternative to UPstream::Request)
+);
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace PstreamDetail
 } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#ifdef NoRepository
-#include "UPstreamWrappingTemplates.C"
-#endif
+#include "UPstreamWrapping.txx"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

@@ -5,8 +5,8 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2011-2016 OpenFOAM Foundation
-    Copyright (C) 2021 OpenCFD Ltd.
+    Copyright (C) 2013-2015 OpenFOAM Foundation
+    Copyright (C) 2023 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -30,21 +30,18 @@ License
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-Foam::DynamicList<MPI_Request> Foam::PstreamGlobals::outstandingRequests_;
-Foam::DynamicList<Foam::label> Foam::PstreamGlobals::freedRequests_;
-
-int Foam::PstreamGlobals::nTags_ = 0;
-
-Foam::DynamicList<int> Foam::PstreamGlobals::freedTags_;
-
+Foam::DynamicList<bool> Foam::PstreamGlobals::pendingMPIFree_;
 Foam::DynamicList<MPI_Comm> Foam::PstreamGlobals::MPICommunicators_;
-Foam::DynamicList<MPI_Group> Foam::PstreamGlobals::MPIGroups_;
+Foam::DynamicList<MPI_Request> Foam::PstreamGlobals::outstandingRequests_;
+
 
 // * * * * * * * * * * * * * * * Global Functions  * * * * * * * * * * * * * //
 
-void Foam::PstreamGlobals::checkCommunicator(
+void Foam::PstreamGlobals::checkCommunicator
+(
     const label comm,
-    const label toProcNo)
+    const label toProcNo
+)
 {
     if (comm < 0 || comm >= PstreamGlobals::MPICommunicators_.size())
     {
@@ -56,5 +53,6 @@ void Foam::PstreamGlobals::checkCommunicator(
             << ')' << abort(FatalError);
     }
 }
+
 
 // ************************************************************************* //

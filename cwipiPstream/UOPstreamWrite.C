@@ -6,7 +6,7 @@
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
     Copyright (C) 2011-2017 OpenFOAM Foundation
-    Copyright (C) 2019-2022 OpenCFD Ltd.
+    Copyright (C) 2019-2023 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -30,123 +30,167 @@ License
 #include "PstreamGlobals.H"
 #include "profilingPstream.H"
 
-#include <mpi.h>
-
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 bool Foam::UOPstream::bufferIPCsend()
 {
-    return UOPstream::write(
+    return UOPstream::write
+    (
         commsType(),
         toProcNo_,
         sendBuf_.cdata(),
         sendBuf_.size(),
         tag_,
-        comm_);
+        comm_
+    );
 }
+
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-bool Foam::UOPstream::write(
+bool Foam::UOPstream::write
+(
     const UPstream::commsTypes commsType,
     const int toProcNo,
-    const char *buf,
+    const char* buf,
     const std::streamsize bufSize,
     const int tag,
-    const label communicator)
+    const label communicator,
+    UPstream::Request* req,
+    const UPstream::sendModes sendMode
+)
 {
-    if (debug)
+    PstreamGlobals::reset_request(req);
+
+    if (UPstream::debug)
     {
-        Pout << "UOPstream::write : starting write to:" << toProcNo
-             << " tag:" << tag
-             << " comm:" << communicator << " size:" << label(bufSize)
-             << " commType:" << UPstream::commsTypeNames[commsType]
-             << Foam::endl;
+        Pout<< "UOPstream::write : starting write to:" << toProcNo
+            << " tag:" << tag
+            << " comm:" << communicator << " size:" << label(bufSize)
+            << " commType:" << UPstream::commsTypeNames[commsType]
+            << Foam::endl;
     }
-    if (UPstream::warnComm != -1 && communicator != UPstream::warnComm)
+    if (UPstream::warnComm >= 0 && communicator != UPstream::warnComm)
     {
-        Pout << "UOPstream::write : starting write to:" << toProcNo
-             << " tag:" << tag
-             << " comm:" << communicator << " size:" << label(bufSize)
-             << " commType:" << UPstream::commsTypeNames[commsType]
-             << " warnComm:" << UPstream::warnComm
-             << Foam::endl;
+        Pout<< "UOPstream::write : starting write to:" << toProcNo
+            << " tag:" << tag
+            << " comm:" << communicator << " size:" << label(bufSize)
+            << " commType:" << UPstream::commsTypeNames[commsType]
+            << " warnComm:" << UPstream::warnComm
+            << Foam::endl;
         error::printStack(Pout);
     }
 
     PstreamGlobals::checkCommunicator(communicator, toProcNo);
 
-    bool failed = true;
+    int returnCode = MPI_ERR_UNKNOWN;
 
     profilingPstream::beginTiming();
 
-    if (commsType == commsTypes::blocking)
+    if (commsType == UPstream::commsTypes::blocking)
     {
-        failed = MPI_Bsend(
-            const_cast<char *>(buf),
+        returnCode = MPI_Bsend
+        (
+            const_cast<char*>(buf),
             bufSize,
             MPI_BYTE,
             toProcNo,
             tag,
-            PstreamGlobals::MPICommunicators_[communicator]);
+            PstreamGlobals::MPICommunicators_[communicator]
+        );
 
         // Assume these are from scatters ...
         profilingPstream::addScatterTime();
 
-        if (debug)
+        if (UPstream::debug)
         {
-            Pout << "UOPstream::write : finished write to:" << toProcNo
-                 << " tag:" << tag << " size:" << label(bufSize)
-                 << " commsType:" << UPstream::commsTypeNames[commsType]
-                 << Foam::endl;
+            Pout<< "UOPstream::write : finished write to:" << toProcNo
+                << " tag:" << tag << " size:" << label(bufSize)
+                << " commsType:" << UPstream::commsTypeNames[commsType]
+                << Foam::endl;
         }
     }
-    else if (commsType == commsTypes::scheduled)
+    else if (commsType == UPstream::commsTypes::scheduled)
     {
-        failed = MPI_Send(
-            const_cast<char *>(buf),
-            bufSize,
-            MPI_BYTE,
-            toProcNo,
-            tag,
-            PstreamGlobals::MPICommunicators_[communicator]);
+        if (UPstream::sendModes::sync == sendMode)
+        {
+            returnCode = MPI_Ssend
+            (
+                const_cast<char*>(buf),
+                bufSize,
+                MPI_BYTE,
+                toProcNo,
+                tag,
+                PstreamGlobals::MPICommunicators_[communicator]
+            );
+        }
+        else
+        {
+            returnCode = MPI_Send
+            (
+                const_cast<char*>(buf),
+                bufSize,
+                MPI_BYTE,
+                toProcNo,
+                tag,
+                PstreamGlobals::MPICommunicators_[communicator]
+            );
+        }
 
         // Assume these are from scatters ...
         profilingPstream::addScatterTime();
 
-        if (debug)
+        if (UPstream::debug)
         {
-            Pout << "UOPstream::write : finished write to:" << toProcNo
-                 << " tag:" << tag << " size:" << label(bufSize)
-                 << " commsType:" << UPstream::commsTypeNames[commsType]
-                 << Foam::endl;
+            Pout<< "UOPstream::write : finished write to:" << toProcNo
+                << " tag:" << tag << " size:" << label(bufSize)
+                << " commsType:" << UPstream::commsTypeNames[commsType]
+                << Foam::endl;
         }
     }
-    else if (commsType == commsTypes::nonBlocking)
+    else if (commsType == UPstream::commsTypes::nonBlocking)
     {
         MPI_Request request;
 
-        failed = MPI_Isend(
-            const_cast<char *>(buf),
-            bufSize,
-            MPI_BYTE,
-            toProcNo,
-            tag,
-            PstreamGlobals::MPICommunicators_[communicator],
-            &request);
-
-        profilingPstream::addWaitTime();
-
-        if (debug)
+        if (UPstream::sendModes::sync == sendMode)
         {
-            Pout << "UOPstream::write : started write to:" << toProcNo
-                 << " tag:" << tag << " size:" << label(bufSize)
-                 << " commType:" << UPstream::commsTypeNames[commsType]
-                 << " request:" << PstreamGlobals::outstandingRequests_.size()
-                 << Foam::endl;
+            returnCode = MPI_Issend
+            (
+                const_cast<char*>(buf),
+                bufSize,
+                MPI_BYTE,
+                toProcNo,
+                tag,
+                PstreamGlobals::MPICommunicators_[communicator],
+               &request
+            );
+        }
+        else
+        {
+            returnCode = MPI_Isend
+            (
+                const_cast<char*>(buf),
+                bufSize,
+                MPI_BYTE,
+                toProcNo,
+                tag,
+                PstreamGlobals::MPICommunicators_[communicator],
+               &request
+            );
         }
 
-        PstreamGlobals::outstandingRequests_.push_back(request);
+        if (UPstream::debug)
+        {
+            Pout<< "UOPstream::write : started write to:" << toProcNo
+                << " tag:" << tag << " size:" << label(bufSize)
+                << " commType:" << UPstream::commsTypeNames[commsType]
+                << " request:" <<
+                (req ? label(-1) : PstreamGlobals::outstandingRequests_.size())
+                << Foam::endl;
+        }
+
+        PstreamGlobals::push_request(request, req);
+        profilingPstream::addRequestTime();
     }
     else
     {
@@ -155,7 +199,8 @@ bool Foam::UOPstream::write(
             << Foam::abort(FatalError);
     }
 
-    return !failed;
+    return (returnCode == MPI_SUCCESS);
 }
+
 
 // ************************************************************************* //

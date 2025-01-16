@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2022 OpenCFD Ltd.
+    Copyright (C) 2022-2023 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -42,27 +42,30 @@ void Foam::UIPBstream::bufferIPCrecv()
     label bufSize(0);
 
     // Broadcast #1 - data size
-    if (
-        !UPstream::broadcast(
-            reinterpret_cast<char *>(&bufSize),
+    if
+    (
+        !UPstream::broadcast
+        (
+            reinterpret_cast<char*>(&bufSize),
             sizeof(label),
             comm_,
-            fromProcNo_ //< is actually rootProcNo
-            ))
+            fromProcNo_  //< is actually rootProcNo
+        )
+    )
     {
         FatalErrorInFunction
             << "MPI_Bcast failure receiving buffer size" << nl
             << Foam::abort(FatalError);
     }
 
-    if (debug)
+    if (UPstream::debug)
     {
-        Pout << "UOPBstream IPC read buffer :"
-             << " root:" << fromProcNo_
-             << " comm:" << comm_
-             << " probed size:" << bufSize
-             << " wanted size:" << recvBuf_.capacity()
-             << Foam::endl;
+        Pout<< "UOPBstream IPC read buffer :"
+            << " root:" << fromProcNo_
+            << " comm:" << comm_
+            << " probed size:" << bufSize
+            << " wanted size:" << recvBuf_.capacity()
+            << Foam::endl;
     }
 
     // No buffer size allocated/specified
@@ -79,13 +82,16 @@ void Foam::UIPBstream::bufferIPCrecv()
 
     if (messageSize_)
     {
-        if (
-            !UPstream::broadcast(
+        if
+        (
+            !UPstream::broadcast
+            (
                 recvBuf_.data(),
-                messageSize_, // same as bufSize
+                messageSize_,  // same as bufSize
                 comm_,
-                fromProcNo_ //< is actually rootProcNo
-                ))
+                fromProcNo_  //< is actually rootProcNo
+            )
+        )
         {
             FatalErrorInFunction
                 << "MPI_Bcast failure receiving buffer data:" << bufSize << nl
@@ -102,18 +108,21 @@ void Foam::UIPBstream::bufferIPCrecv()
     }
 }
 
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::label Foam::UIPBstream::read(
-    const commsTypes commsType,
+Foam::label Foam::UIPBstream::read
+(
     const int rootProcNo,
-    char *buf,
+    char* buf,
     const std::streamsize bufSize,
-    const int tag,
-    const label comm)
+    const label comm
+)
 {
-    if (
-        !UPstream::broadcast(buf, bufSize, comm, rootProcNo))
+    if
+    (
+        !UPstream::broadcast(buf, bufSize, comm, rootProcNo)
+    )
     {
         FatalErrorInFunction
             << "MPI_Bcast failure receiving data:" << label(bufSize) << nl
@@ -123,5 +132,6 @@ Foam::label Foam::UIPBstream::read(
 
     return bufSize;
 }
+
 
 // ************************************************************************* //

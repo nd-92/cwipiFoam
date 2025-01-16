@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2022 OpenCFD Ltd.
+    Copyright (C) 2022-2023 OpenCFD Ltd.
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -29,53 +29,56 @@ License
 #include "PstreamGlobals.H"
 #include "profilingPstream.H"
 
-#include <mpi.h>
-
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-bool Foam::UPstream::broadcast(
-    char *buf,
+bool Foam::UPstream::broadcast
+(
+    char* buf,
     const std::streamsize bufSize,
     const label comm,
-    const int rootProcNo)
+    const int rootProcNo
+)
 {
-    if (!UPstream::parRun() || UPstream::nProcs(comm) < 2)
+    if (!UPstream::is_parallel(comm))
     {
         // Nothing to do - ignore
         return true;
     }
 
-    // Needed?  PstreamGlobals::checkCommunicator(comm, rootProcNo);
+    //Needed?  PstreamGlobals::checkCommunicator(comm, rootProcNo);
 
-    if (debug)
+    if (UPstream::debug)
     {
-        Pout << "UPstream::broadcast : root:" << rootProcNo
-             << " comm:" << comm
-             << " size:" << label(bufSize)
-             << Foam::endl;
+        Pout<< "UPstream::broadcast : root:" << rootProcNo
+            << " comm:" << comm
+            << " size:" << label(bufSize)
+            << Foam::endl;
     }
-    if (UPstream::warnComm != -1 && comm != UPstream::warnComm)
+    if (UPstream::warnComm >= 0 && comm != UPstream::warnComm)
     {
-        Pout << "UPstream::broadcast : root:" << rootProcNo
-             << " comm:" << comm
-             << " size:" << label(bufSize)
-             << " warnComm:" << UPstream::warnComm
-             << Foam::endl;
+        Pout<< "UPstream::broadcast : root:" << rootProcNo
+            << " comm:" << comm
+            << " size:" << label(bufSize)
+            << " warnComm:" << UPstream::warnComm
+            << Foam::endl;
         error::printStack(Pout);
     }
 
     profilingPstream::beginTiming();
 
-    bool failed = MPI_Bcast(
+    const int returnCode = MPI_Bcast
+    (
         buf,
         bufSize,
         MPI_BYTE,
         rootProcNo,
-        PstreamGlobals::MPICommunicators_[comm]);
+        PstreamGlobals::MPICommunicators_[comm]
+    );
 
     profilingPstream::addBroadcastTime();
 
-    return !failed;
+    return (returnCode == MPI_SUCCESS);
 }
+
 
 // ************************************************************************* //
