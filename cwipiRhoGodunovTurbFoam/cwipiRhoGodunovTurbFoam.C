@@ -66,31 +66,117 @@ int main(int argc, char *argv[])
     // Runge-Kutta coefficient
     constexpr const std::array<scalar, 4> beta = {0.1100, 0.2766, 0.5, 1};
 
-    // Create CWIPI coupling
-    cwipiPstream coupling(
-        runTime,
-        mesh,
-        thermo,
-        U);
-
-    Info << "Starting time loop" << endl;
-
-    while (runTime.run())
+    // Do the coupling if defined
+    // Must not be averaging simultaneously
+    if (runTime.controlDict().lookupOrDefault("cwipiSwitch", false) && !(runTime.controlDict().lookupOrDefault("cwipiAveraging", false)))
     {
-        // Send sources at correct time step
-        coupling.send();
+        // Create CWIPI coupling
+        cwipiPstream coupling(runTime, mesh, thermo, U);
 
-        // Execute main solver loop
+        Info << "Starting time loop" << endl;
+
+        while (runTime.run())
+        {
+            // Send sources at correct time step
+            coupling.send();
+
+            // Execute main solver loop
 #include "cwipiRhoGodunovTurbFoam.H"
 
-        // Do I/O
-        runTime.write();
+            // Do I/O
+            runTime.write();
 
-        // Update time step of coupling
-        coupling.updateTime();
+            // Update time step of coupling
+            coupling.updateTime();
 
-        // Print execution time
-        runTime.printExecutionTime(Info);
+            // Print execution time
+            runTime.printExecutionTime(Info);
+        }
+    }
+
+    // Do the averaging if defined
+    // Must not be coupling simultaneously
+    if (runTime.controlDict().lookupOrDefault("cwipiAveraging", false) && !(runTime.controlDict().lookupOrDefault("cwipiSwitch", false)))
+    {
+        // Create CWIPI fields
+        cwipiFields couplingFields(mesh, runTime, U, thermo);
+
+        Info << "Starting time loop" << endl;
+
+        while (runTime.run())
+        {
+            // Update CWIPI fields
+            couplingFields.update();
+
+            // Execute main solver loop
+#include "averagingRhoGodunovTurbFoam.H"
+
+            // Write runtime output
+            runTime.write();
+            runTime.printExecutionTime(Info);
+        }
+    }
+
+    // Otherwise neither are defined, so run as normal and compute the source terms
+    if (!(runTime.controlDict().lookupOrDefault("cwipiSwitch", false)) && !(runTime.controlDict().lookupOrDefault("cwipiAveraging", false)))
+    {
+        cwipiFields couplingFields(mesh, runTime, U, thermo);
+        const cwipiMeanFields baseFlow(mesh, runTime);
+
+        volScalarField DsDt(
+            IOobject(
+                "entropyMonopole",
+                runTime.timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::AUTO_WRITE),
+            baseFlow.cSqMean() * (baseFlow.rhoMean() / thermo.Cp()) * (fvc::ddt(couplingFields.s()) + (baseFlow.UMean() & fvc::grad((couplingFields.s() - baseFlow.sMean())))));
+
+        volVectorField TGrads(
+            IOobject(
+                "entropyGradient",
+                runTime.timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::AUTO_WRITE),
+            ((thermo.T() - baseFlow.TMean()) * fvc::grad(baseFlow.sMean())) - ((couplingFields.s() - baseFlow.sMean()) * fvc::grad(baseFlow.TMean())));
+
+        volVectorField LPrime(
+            IOobject(
+                "LPrime",
+                runTime.timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::AUTO_WRITE),
+            couplingFields.L() - baseFlow.LMean());
+
+        const volScalarField pMean(
+            IOobject(
+                "pMean",
+                runTime.timeName(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::AUTO_WRITE),
+            mesh);
+
+        Info << "Starting time loop" << endl;
+
+        while (runTime.run())
+        {
+            // Execute main solver loop
+#include "rhoGodunovTurbFoam.H"
+
+            // Update CWIPI fields
+            couplingFields.update();
+
+            DsDt = baseFlow.cSqMean() * (baseFlow.rhoMean() / thermo.Cp()) * (fvc::ddt(couplingFields.s()) + (baseFlow.UMean() & fvc::grad((couplingFields.s() - baseFlow.sMean()))));
+            TGrads = ((thermo.T() - baseFlow.TMean()) * fvc::grad(baseFlow.sMean())) - ((couplingFields.s() - baseFlow.sMean()) * fvc::grad(baseFlow.TMean()));
+            LPrime = couplingFields.L() - baseFlow.LMean();
+
+            // Write runtime output
+            runTime.write();
+            runTime.printExecutionTime(Info);
+        }
     }
 
     Info << "End" << endl;

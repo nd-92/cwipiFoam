@@ -91,11 +91,11 @@ namespace Foam
             {
             case 2:
                 Info << "Coupling enabled with 2 physical dimensions" << endl;
-                return "F_0_u,F_0_v,F_0_p";
+                return "F_0_p,F_0_u,F_0_v";
                 break;
             case 3:
                 Info << "Coupling enabled with 3 physical dimensions" << endl;
-                return "F_0_u,F_0_v,F_0_w,F_0_p";
+                return "F_0_p,F_0_u,F_0_v,F_0_w";
                 break;
             default:
                 throw std::invalid_argument("Variable cwipiDim should be 2 or 3.");
@@ -128,7 +128,7 @@ namespace Foam
             }
 
             // Multiply by a dimensionless scale factor
-            return DT * dimensionedScalar("zero", dimless, __runTime.controlDict().lookupOrDefault("smoothingScale", 1));
+            return DT * dimensionedScalar("zero", dimless, __runTime.controlDict().lookupOrDefault("smoothingScale", 1.0));
         };
 
         // Smoothen source fields
@@ -183,19 +183,19 @@ namespace Foam
             {
                 forAll(mesh_.points(), i)
                 {
-                    fieldsToSend_[(4 * i) + 0] = F_0_u_[i].x();
-                    fieldsToSend_[(4 * i) + 1] = F_0_u_[i].y();
-                    fieldsToSend_[(4 * i) + 2] = F_0_u_[i].z();
-                    fieldsToSend_[(4 * i) + 3] = F_0_p_[i];
+                    fieldsToSend_[(4 * i) + 0] = F_0_p_[i];
+                    fieldsToSend_[(4 * i) + 1] = F_0_u_[i].x();
+                    fieldsToSend_[(4 * i) + 2] = F_0_u_[i].y();
+                    fieldsToSend_[(4 * i) + 3] = F_0_u_[i].z();
                 }
             }
             else
             {
                 forAll(mesh_.points(), i)
                 {
-                    fieldsToSend_[(3 * i) + 0] = F_0_u_[i].x();
-                    fieldsToSend_[(3 * i) + 1] = F_0_u_[i].y();
-                    fieldsToSend_[(3 * i) + 2] = F_0_p_[i];
+                    fieldsToSend_[(3 * i) + 0] = F_0_p_[i];
+                    fieldsToSend_[(3 * i) + 1] = F_0_u_[i].x();
+                    fieldsToSend_[(3 * i) + 2] = F_0_u_[i].y();
                 }
             }
         };
@@ -292,6 +292,13 @@ namespace Foam
             return connec;
         }
 
+        // Laplacian smoothing coefficient
+        const volScalarField DT_;
+        // const volVectorField DT_;
+        volScalarField pressureSmoother_;
+        volVectorField velocitySmoother_;
+        const bool smoothenSourcesSwitch;
+
         // Cwipi source array
         std::vector<scalar> fieldsToSend_;
 
@@ -307,30 +314,24 @@ namespace Foam
             {
                 forAll(mesh.points(), i)
                 {
-                    fieldsToSend[(4 * i) + 0] = F_U[i].x();
-                    fieldsToSend[(4 * i) + 1] = F_U[i].y();
-                    fieldsToSend[(4 * i) + 2] = F_U[i].z();
-                    fieldsToSend[(4 * i) + 3] = F_p[i];
+                    fieldsToSend[(4 * i) + 0] = 0;
+                    fieldsToSend[(4 * i) + 1] = 0;
+                    fieldsToSend[(4 * i) + 2] = 0;
+                    fieldsToSend[(4 * i) + 3] = 0;
                 }
             }
             else
             {
                 forAll(mesh.points(), i)
                 {
-                    fieldsToSend[(3 * i) + 0] = F_U[i].x();
-                    fieldsToSend[(3 * i) + 1] = F_U[i].y();
-                    fieldsToSend[(3 * i) + 2] = F_p[i];
+                    fieldsToSend[(3 * i) + 0] = 0;
+                    fieldsToSend[(3 * i) + 1] = 0;
+                    fieldsToSend[(3 * i) + 2] = 0;
                 }
             }
 
             return fieldsToSend;
         }
-
-        // Laplacian smoothing coefficient
-        const volScalarField DT_;
-        volScalarField pressureSmoother_;
-        volVectorField velocitySmoother_;
-        const bool smoothenSourcesSwitch;
     };
 
 }

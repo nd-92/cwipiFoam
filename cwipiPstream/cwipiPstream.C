@@ -67,11 +67,11 @@ namespace Foam
           pointCoords_(pointCoordsInitialise(mesh_)),
           connecIdx_(connecIdxInitialise(mesh_)),
           connec_(connecInitialise(mesh_)),
-          fieldsToSend_(fieldsToSendInitialise(mesh, F_0_p_, F_0_u_, dim_)),
           DT_(initialiseSmoothingCoefficient(mesh_, runTime_)),
           pressureSmoother_(IOobject("f_p", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedScalar("zero", F_p_.dimensions(), 0), fixedValueFvPatchScalarField::typeName),
           velocitySmoother_(IOobject("f_U", runTime_.timeName(), mesh_, IOobject::NO_READ, IOobject::NO_WRITE), mesh_, dimensionedVector("zero", F_u_.dimensions(), vector(0, 0, 0)), fixedValueFvPatchScalarField::typeName),
-          smoothenSourcesSwitch(static_cast<bool>(runTime.controlDict().lookupOrDefault("smoothenSources", false)))
+          smoothenSourcesSwitch(static_cast<bool>(runTime.controlDict().lookupOrDefault("smoothenSources", false))),
+          fieldsToSend_(fieldsToSendInitialise(mesh, F_0_p_, F_0_u_, dim_))
     {
         // Add local control parameters
         cwipi_add_local_int_control_parameter("nSendVars", dim_ + 1);
